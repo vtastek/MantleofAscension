@@ -120,10 +120,6 @@ local function onClimbE(e)
         return
     end
 
-    if (e.pressed == false) then
-        return
-    end
-
     -- let's start! finally...
 
     local velPlayer = mobile.velocity
@@ -238,8 +234,7 @@ local function onClimbE(e)
     end
 end
 
--- hotkey = E
-event.register('key', onClimbE, {filter = 18})
+event.register('keyDown', onClimbE, {filter = tes3.scanCode.e})
 -- event.register("key", onHoldingKey, { filter = 57 })
 
 -- MCM
