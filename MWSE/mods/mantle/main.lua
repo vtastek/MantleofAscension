@@ -71,7 +71,7 @@ local function onClimbE(e)
         return
     end
 
-    if tes3.menuMode() then
+    if tes3ui.menuMode() then
         return
     end
 
