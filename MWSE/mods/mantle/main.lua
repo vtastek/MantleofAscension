@@ -22,10 +22,7 @@ local function frontDownCast()
     -- renormalize eyevec with fixed magnitude for zero z
     -- to avoid making a spherical reach
     local vm = math.sqrt(eyeVec.x * eyeVec.x + eyeVec.y * eyeVec.y)
-
-    if (vm > 0) then
-        vm = vm
-    else
+    if vm <= 0 then
         vm = 1
     end
 
@@ -42,36 +39,30 @@ local function climbPlayer()
         return
     end
 
-    local player = tes3.getPlayerRef()
+    local playerMob = tes3.mobilePlayer
 
     -- if added directly, it will fight gravity badly
     jumpPosition = jumpPosition + climbHeight / 60 * cSpeed * FatigInf
 
     -- equalizing instead gets consistent results
-    player.position.z = jumpPosition
+    playerMob.reference.position.z = jumpPosition
 
     -- tiny amount of velocity cancellation
     -- not zero, zero disables gravity impact
-    local velPlayer = tes3.getMobilePlayer()
-    velPlayer.velocity.x = 0.01
-    velPlayer.velocity.y = 0.01
-    velPlayer.velocity.z = 0.01
-    velPlayer.impulseVelocity.x = 0.01
-    velPlayer.impulseVelocity.y = 0.01
-    velPlayer.impulseVelocity.z = 0.01
+    playerMob.velocity.x = 0.01
+    playerMob.velocity.y = 0.01
+    playerMob.velocity.z = 0.01
+    playerMob.impulseVelocity.x = 0.01
+    playerMob.impulseVelocity.y = 0.01
+    playerMob.impulseVelocity.z = 0.01
 end
 
 local function playMoan()
-    tes3.playSound {sound = 'corpDRAG', volume = 0.4, pitch = 0.8}
+    tes3.playSound{sound = 'corpDRAG', volume = 0.4, pitch = 0.8}
 end
 
 local function playMoan2()
-    tes3.playSound {sound = 'corpDRAG', volume = 0.1, pitch = 1.3}
-end
-
--- because timer takes functions only ?
-local function jumpingNot()
-    jumping = 0
+    tes3.playSound{sound = 'corpDRAG', volume = 0.1, pitch = 1.3}
 end
 
 local function onClimbE(e)
@@ -230,7 +221,7 @@ local function onClimbE(e)
 
         timer.start(0.1, playMoan)
         timer.start(0.7, playMoan2)
-        timer.start(0.4, jumpingNot)
+        timer.start(0.4, function() jumping = 0 end)
     end
 end
 
