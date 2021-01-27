@@ -85,7 +85,7 @@ local function onClimbE(e)
     end
 
     local mobile = tes3.getMobilePlayer()
-    tes3.messageBox('%s', tes3.player.speed)
+    -- tes3.messageBox('%s', tes3.player.speed)
 
     if (mobile.levitate > 0) then
         return
