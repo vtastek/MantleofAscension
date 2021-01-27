@@ -14,6 +14,11 @@ local jumping = nil
 local acroInf = 1 -- acrobatics influence todo
 local FatigInf = 1 -- Fatigue influence todo
 
+-- constants
+
+local DOWN = tes3vector3.new(0, 0, -1)
+
+
 -- get the ray start pos, from above and slightly front downwards
 local function frontDownCast()
     local eyeVec = tes3.getCameraVector()
@@ -26,11 +31,21 @@ local function frontDownCast()
         vm = 1
     end
 
-    return {
+    local pos = tes3vector3.new(
         eyePos.x + (eyeVec.x / vm * 75),
         eyePos.y + (eyeVec.y / vm * 75),
         eyePos.z + (200)
-    }
+    )
+
+    return tes3.rayTest{position = pos, direction = DOWN}
+end
+
+local function applyClimbingFatigueCost(mobile)
+    local jumpBase = tes3.findGMST('fFatigueJumpBase').value
+    local jumpMult = tes3.findGMST('fFatigueJumpMult').value
+    local encumbRatio = mobile.encumbrance.current / mobile.encumbrance.base
+    local fatigueCost = jumpBase + encumbRatio * jumpMult
+    mobile.fatigue.current = math.min(0, mobile.fatigue.current - fatigueCost)
 end
 
 local function climbPlayer()
@@ -57,11 +72,11 @@ local function climbPlayer()
     playerMob.impulseVelocity.z = 0.01
 end
 
-local function playMoan()
+local function playClimbingStartedSound()
     tes3.playSound{sound = 'corpDRAG', volume = 0.4, pitch = 0.8}
 end
 
-local function playMoan2()
+local function playClimbingFinishedSound()
     tes3.playSound{sound = 'corpDRAG', volume = 0.1, pitch = 1.3}
 end
 
@@ -93,7 +108,7 @@ local function onClimbE(e)
     end
 
     -- disabled for 3rd person for now
-    if (tes3.is3rdPerson() == true) then
+    if tes3.is3rdPerson() then
         return
     end
 
@@ -135,8 +150,7 @@ local function onClimbE(e)
     -- local campos = tes3.getCameraPosition()
 
     -- upwards raycast so we know there is no blocking
-    local uResult =
-        tes3.rayTest {
+    local uResult = tes3.rayTest{
         position = tes3.getCameraPosition(),
         direction = {0, 0, 1}
     }
@@ -148,27 +162,19 @@ local function onClimbE(e)
         uResultz = uResult.intersection.z
     end
 
-    local player = tes3.getPlayerRef()
-
     -- instead of (camerapos - footpos)
     local pHeight = mobile.height
 
     -- down raycast
-    local result =
-        tes3.rayTest {
-        position = frontDownCast(),
-        direction = {0, 0, -1}
-    }
-
-    --local reference = mwscript.placeAtPC{object="misc_dwrv_ark_cube00"}
-
-    --reference.position = frontDownCast()
-    --mwse.log("%f,%f,%f", tes3.getCameraVector().x, tes3.getCameraVector().y, tes3.getCameraVector().z )
-    --mwse.log("a %f,%f,%f", reference.position.x, reference.position.y, reference.position.z)
-
+    local result = frontDownCast()
     if (result == nil) then
         return
     end
+
+    --local reference = mwscript.placeAtPC{object="misc_dwrv_ark_cube00"}
+    --reference.position = frontDownCast()
+    --mwse.log("%f,%f,%f", tes3.getCameraVector().x, tes3.getCameraVector().y, tes3.getCameraVector().z )
+    --mwse.log("a %f,%f,%f", reference.position.x, reference.position.y, reference.position.z)
 
     -- if there is enough room for PC height go on
     if ((uResultz - result.intersection.z) < pHeight) then
@@ -186,46 +192,28 @@ local function onClimbE(e)
 
     -- how much to move upwards
     -- bias for player bounding box
-    climbHeight = (result.intersection.z - player.position.z) * acroInf + 70
+    climbHeight = (result.intersection.z - tes3.player.position.z) * acroInf + 70
 
     -- print(pHeight)
 
     -- store jump distance for sound fx and fatigue regulation
     -- local jumpPositionC
 
-    if (player.position.z < result.intersection.z) then
-        jumpPosition = player.position.z
-        --jumpPositionHold = player.position.z
+    if (tes3.player.position.z < result.intersection.z) then
+        jumpPosition = tes3.player.position.z
+        --jumpPositionHold = tes3.player.position.z
         --jumpPositionC = jumpPosition
 
         jumping = 1
 
         timer.start(1 / 60, climbPlayer, 60 / cSpeed)
-
-        -- local jumpDistance = jumpPosition - jumpPositionC
-
-        local jumpBase = tes3.findGMST('fFatigueJumpBase').value
-        local jumpMult = tes3.findGMST('fFatigueJumpMult').values
-        local fLoss
-        if (jumpMult ~= nil and jumpBase ~= nil) then
-            fLoss = jumpBase + (encumb.current / encumb.base) * jumpMult
-
-            if (mobile.fatigue.current > fLoss) then
-                mobile.fatigue.current = mobile.fatigue.current - fLoss
-            else
-                mobile.fatigue.current = 0
-            end
-        end
+        applyClimbingFatigueCost(mobile)
 
         --mobilePlayer:exerciseSkill(tes3.skill.acrobatics, 1)
 
-        timer.start(0.1, playMoan)
-        timer.start(0.7, playMoan2)
+        timer.start(0.1, playClimbingStartedSound)
+        timer.start(0.7, playClimbingFinishedSound)
         timer.start(0.4, function() jumping = 0 end)
     end
 end
-
 event.register('keyDown', onClimbE, {filter = tes3.scanCode.e})
--- event.register("key", onHoldingKey, { filter = 57 })
-
--- MCM
