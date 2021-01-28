@@ -24,9 +24,3 @@ generalPage:createYesNoButton{
     description = "Climbing will increase Athletics skill... Requires Skill Module",
     variable = mwse.mcm.createTableVariable({id = "trainClimbing", table = config})
 }
-generalPage:createKeyBinder{
-    label = "Climb Button Modifier",
-    description = "The key you tap to climb, defaults to jump button",
-    allowCombinations = false,
-    variable = mwse.mcm.createTableVariable({id = "climbKey", table = config})
-}
