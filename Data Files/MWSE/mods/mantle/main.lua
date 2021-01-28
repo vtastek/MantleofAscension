@@ -228,14 +228,14 @@ local function isJumpkey(keyCode)
     return keyCode == tes3.worldController.inputController.inputMaps[tes3.keybind.jump+1].code
 end
 
-function OnKeyDown(e)
+local function onKeyDown(e)
     if not (e.pressed and isJumpkey(e.keyCode)) then
         return
     end
     onClimbE()
 end
 
-event.register('keyDown', OnKeyDown)
+event.register('keyDown', onKeyDown)
 
 local function registerMCM(e)
     require("mantle.mcm")
