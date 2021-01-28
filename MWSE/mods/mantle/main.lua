@@ -5,7 +5,6 @@
 local climbHeight = 0
 local jumpPosition = 0
 local cSpeed = 2.0
-local uResultz = nil
 -- local jumpingState
 
 local jumping = nil
@@ -15,7 +14,7 @@ local acroInf = 1 -- acrobatics influence todo
 local FatigInf = 1 -- Fatigue influence todo
 
 -- constants
-
+local UP = tes3vector3.new(0, 0, 1)
 local DOWN = tes3vector3.new(0, 0, -1)
 
 
@@ -40,6 +39,16 @@ local function frontDownCast()
     return tes3.rayTest{position = pos, direction = DOWN}
 end
 
+local function getCeilingHeight()
+    local eyePos = tes3.getPlayerEyePosition()
+    local result = tes3.rayTest{position = eyePos, direction = UP}
+    if result then
+        return result.intersection.z
+    else
+        return eyePos.z + 1000
+    end
+end
+
 local function applyClimbingFatigueCost(mobile)
     local jumpBase = tes3.findGMST('fFatigueJumpBase').value
     local jumpMult = tes3.findGMST('fFatigueJumpMult').value
@@ -50,7 +59,7 @@ end
 
 local function climbPlayer()
     -- some bias to prevent clipping through floors
-    if (uResultz < (tes3.getPlayerEyePosition().z + 20)) then
+    if (getCeilingHeight() < (tes3.getPlayerEyePosition().z + 20)) then
         return
     end
 
@@ -147,46 +156,20 @@ local function onClimbE(e)
         end
     end
 
-    -- local campos = tes3.getPlayerEyePosition()
-
-    -- upwards raycast so we know there is no blocking
-    local uResult = tes3.rayTest{
-        position = tes3.getPlayerEyePosition(),
-        direction = {0, 0, 1}
-    }
-
-    if (uResult == nil) then
-        -- mwse.log("uResult is nil")
-        uResultz = tes3.getPlayerEyePosition().z + 1000
-    else
-        uResultz = uResult.intersection.z
-    end
-
-    -- instead of (camerapos - footpos)
-    local pHeight = mobile.height
-
     -- down raycast
     local result = frontDownCast()
     if (result == nil) then
         return
     end
 
-    --local reference = mwscript.placeAtPC{object="misc_dwrv_ark_cube00"}
-    --reference.position = frontDownCast()
-    --mwse.log("%f,%f,%f", tes3.getPlayerEyeVector().x, tes3.getPlayerEyeVector().y, tes3.getPlayerEyeVector().z )
-    --mwse.log("a %f,%f,%f", reference.position.x, reference.position.y, reference.position.z)
-
     -- if there is enough room for PC height go on
-    if ((uResultz - result.intersection.z) < pHeight) then
-        --mwse.log("there is no room")
-        --mwse.log("ci: %0.2f, %0.2f", uResultz, result.intersection.z)
+    local pHeight = mobile.height
+    if (getCeilingHeight() - result.intersection.z) < pHeight then
         return
-    --else
-    --mwse.log("cix: %0.2f, %0.2f, %0.2f", uResultz, result.intersection.z, pHeight)
     end
 
     -- if below waist obstacle, do not attempt climbing
-    if (result.intersection.z < (tes3.getPlayerEyePosition().z - (pHeight * 0.5))) then
+    if result.intersection.z < (tes3.getPlayerEyePosition().z - (pHeight * 0.5)) then
         return
     end
 
@@ -194,16 +177,8 @@ local function onClimbE(e)
     -- bias for player bounding box
     climbHeight = (result.intersection.z - tes3.player.position.z) * acroInf + 70
 
-    -- print(pHeight)
-
-    -- store jump distance for sound fx and fatigue regulation
-    -- local jumpPositionC
-
     if (tes3.player.position.z < result.intersection.z) then
         jumpPosition = tes3.player.position.z
-        --jumpPositionHold = tes3.player.position.z
-        --jumpPositionC = jumpPosition
-
         jumping = 1
 
         timer.start(1 / 60, climbPlayer, 60 / cSpeed)
