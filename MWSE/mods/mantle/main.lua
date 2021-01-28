@@ -21,8 +21,8 @@ local DOWN = tes3vector3.new(0, 0, -1)
 
 -- get the ray start pos, from above and slightly front downwards
 local function frontDownCast()
-    local eyeVec = tes3.getCameraVector()
-    local eyePos = tes3.getCameraPosition()
+    local eyeVec = tes3.getPlayerEyeVector()
+    local eyePos = tes3.getPlayerEyePosition()
 
     -- renormalize eyevec with fixed magnitude for zero z
     -- to avoid making a spherical reach
@@ -50,7 +50,7 @@ end
 
 local function climbPlayer()
     -- some bias to prevent clipping through floors
-    if (uResultz < (tes3.getCameraPosition().z + 20)) then
+    if (uResultz < (tes3.getPlayerEyePosition().z + 20)) then
         return
     end
 
@@ -147,17 +147,17 @@ local function onClimbE(e)
         end
     end
 
-    -- local campos = tes3.getCameraPosition()
+    -- local campos = tes3.getPlayerEyePosition()
 
     -- upwards raycast so we know there is no blocking
     local uResult = tes3.rayTest{
-        position = tes3.getCameraPosition(),
+        position = tes3.getPlayerEyePosition(),
         direction = {0, 0, 1}
     }
 
     if (uResult == nil) then
         -- mwse.log("uResult is nil")
-        uResultz = tes3.getCameraPosition().z + 1000
+        uResultz = tes3.getPlayerEyePosition().z + 1000
     else
         uResultz = uResult.intersection.z
     end
@@ -173,7 +173,7 @@ local function onClimbE(e)
 
     --local reference = mwscript.placeAtPC{object="misc_dwrv_ark_cube00"}
     --reference.position = frontDownCast()
-    --mwse.log("%f,%f,%f", tes3.getCameraVector().x, tes3.getCameraVector().y, tes3.getCameraVector().z )
+    --mwse.log("%f,%f,%f", tes3.getPlayerEyeVector().x, tes3.getPlayerEyeVector().y, tes3.getPlayerEyeVector().z )
     --mwse.log("a %f,%f,%f", reference.position.x, reference.position.y, reference.position.z)
 
     -- if there is enough room for PC height go on
@@ -186,7 +186,7 @@ local function onClimbE(e)
     end
 
     -- if below waist obstacle, do not attempt climbing
-    if (result.intersection.z < (tes3.getCameraPosition().z - (pHeight * 0.5))) then
+    if (result.intersection.z < (tes3.getPlayerEyePosition().z - (pHeight * 0.5))) then
         return
     end
 
