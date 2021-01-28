@@ -223,7 +223,19 @@ local function onClimbE(e)
     destination = (destination.z - playerMob.position.z) * acrobaticsInfluence + 70
     startClimbing(destination, speed)
 end
-event.register('keyDown', onClimbE, {filter = tes3.scanCode.e})
+
+local function isJumpkey(keyCode)
+    return keyCode == tes3.worldController.inputController.inputMaps[tes3.keybind.jump+1].code
+end
+
+function OnKeyDown(e)
+    if not (e.pressed and isJumpkey(e.keyCode)) then
+        return
+    end
+    onClimbE()
+end
+
+event.register('keyDown', OnKeyDown)
 
 local function registerMCM(e)
     require("mantle.mcm")
