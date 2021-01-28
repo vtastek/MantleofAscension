@@ -45,7 +45,7 @@ local function applyClimbingFatigueCost(mobile)
     local jumpMult = tes3.findGMST('fFatigueJumpMult').value
     local encumbRatio = mobile.encumbrance.current / mobile.encumbrance.base
     local fatigueCost = jumpBase + encumbRatio * jumpMult
-    mobile.fatigue.current = math.min(0, mobile.fatigue.current - fatigueCost)
+    mobile.fatigue.current = math.max(0, mobile.fatigue.current - fatigueCost)
 end
 
 local function climbPlayer()
