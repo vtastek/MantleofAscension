@@ -2,6 +2,9 @@
 -- by vtastek
 -- Adds climbing to Morrowind
 
+local config = require("mantle.config")
+mwse.log("[Mantle of Ascension] initialized v0.0.1")
+
 -- config
 local acrobaticsInfluence = 1.0 -- TODO
 local fatigueInfluence = 1.0 -- TODO
@@ -217,7 +220,13 @@ local function onClimbE(e)
 
     -- how much to move upwards
     -- bias for player bounding box
-    local destination = (destination.z - playerMob.position.z) * acrobaticsInfluence + 70
+    destination = (destination.z - playerMob.position.z) * acrobaticsInfluence + 70
     startClimbing(destination, speed)
 end
 event.register('keyDown', onClimbE, {filter = tes3.scanCode.e})
+
+local function registerMCM(e)
+    require("mantle.mcm")
+end
+event.register("modConfigReady", registerMCM)
+-------------
