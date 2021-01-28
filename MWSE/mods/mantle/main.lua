@@ -93,67 +93,23 @@ local function onClimbE(e)
     -- disabled during jumping, by jumping I mean climbing
     if (jumping == 1) then
         return
-    end
-
-    if tes3ui.menuMode() then
+    elseif tes3ui.menuMode() then
+        return
+    elseif tes3.is3rdPerson() then
+        return
+    elseif tes3.mobilePlayer.isFlying then
         return
     end
 
-    local mobile = tes3.getMobilePlayer()
-    -- tes3.messageBox('%s', tes3.player.speed)
-
-    if (mobile.levitate > 0) then
-        return
-    end
-
-    -- dead men can't jump
-    if (mobile.health.current < 1) then
+    -- prevent climbing while downed/dying/etc
+    local attackState = tes3.mobilePlayer.actionData.animationAttackState
+    if attackState ~= tes3.animationState.idle then
         return
     end
 
     -- disable during chargen, -1 is all done
     if (tes3.getGlobal('ChargenState') ~= -1) then
         return
-    end
-
-    -- disabled for 3rd person for now
-    if tes3.is3rdPerson() then
-        return
-    end
-
-    local statedown = mobile.actionData.animationAttackState
-
-    -- if player is down
-    if (statedown == nil or statedown == 1) then
-        return
-    end
-
-    -- if player is encumbered
-    local encumb = mobile.encumbrance
-    if (encumb.current > encumb.base) then
-        --mwse.log("encumb")
-        return
-    end
-
-    -- let's start! finally...
-
-    local velPlayer = mobile.velocity
-    local velCurrent = math.abs(velPlayer.x) + math.abs(velPlayer.y)
-
-    -- stationary penalty
-    if (velCurrent < 100) then
-        cSpeed = 1.5
-    end
-
-    -- falling too fast
-    local fastfall = math.max(0, 125 - mobile.acrobatics.current)
-    -- acrobatics 25 fastfall 100 -1000
-    -- acrobatics 100 fastfall 25 -2000
-
-    if (fastfall ~= 0) then
-        if (velPlayer.z < -10 * (-1.5 * fastfall + 250)) then
-            return
-        end
     end
 
     -- down raycast
@@ -163,7 +119,7 @@ local function onClimbE(e)
     end
 
     -- if there is enough room for PC height go on
-    local pHeight = mobile.height
+    local pHeight = tes3.mobilePlayer.height
     if (getCeilingHeight() - result.intersection.z) < pHeight then
         return
     end
@@ -171,6 +127,25 @@ local function onClimbE(e)
     -- if below waist obstacle, do not attempt climbing
     if result.intersection.z < (tes3.getPlayerEyePosition().z - (pHeight * 0.5)) then
         return
+    end
+
+    -- let's start! finally...
+    local velPlayer = tes3.mobilePlayer.velocity
+    local velCurrent = math.abs(velPlayer.x) + math.abs(velPlayer.y)
+
+    -- stationary penalty
+    if (velCurrent < 100) then
+        cSpeed = 1.5
+    end
+
+    -- falling too fast
+    -- acrobatics 25 fastfall 100 -1000
+    -- acrobatics 100 fastfall 25 -2000
+    local fastfall = math.max(0, 125 - tes3.mobilePlayer.acrobatics.current)
+    if (fastfall ~= 0) then
+        if (velPlayer.z < -10 * (-1.5 * fastfall + 250)) then
+            return
+        end
     end
 
     -- how much to move upwards
@@ -182,7 +157,7 @@ local function onClimbE(e)
         jumping = 1
 
         timer.start(1 / 60, climbPlayer, 60 / cSpeed)
-        applyClimbingFatigueCost(mobile)
+        applyClimbingFatigueCost(tes3.mobilePlayer)
 
         --mobilePlayer:exerciseSkill(tes3.skill.acrobatics, 1)
 
