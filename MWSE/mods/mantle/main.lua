@@ -2,21 +2,16 @@
 -- by vtastek
 -- Adds climbing to Morrowind
 
-local climbHeight = 0
-local jumpPosition = 0
-local cSpeed = 2.0
--- local jumpingState
+-- config
+local acrobaticsInfluence = 1.0 -- TODO
+local fatigueInfluence = 1.0 -- TODO
 
-local jumping = nil
--- local holding = nil
-
-local acroInf = 1 -- acrobatics influence todo
-local FatigInf = 1 -- Fatigue influence todo
+-- state
+local isClimbing = false
 
 -- constants
 local UP = tes3vector3.new(0, 0, 1)
 local DOWN = tes3vector3.new(0, 0, -1)
-
 
 -- get the ray start pos, from above and slightly front downwards
 local function frontDownCast()
@@ -48,36 +43,29 @@ local function getCeilingDistance()
     return math.huge
 end
 
-local function applyClimbingFatigueCost(mobile)
+local function applyClimbingFatigueCost(mob)
     local jumpBase = tes3.findGMST('fFatigueJumpBase').value
     local jumpMult = tes3.findGMST('fFatigueJumpMult').value
-    local encumbRatio = mobile.encumbrance.current / mobile.encumbrance.base
+    local encumbRatio = mob.encumbrance.current / mob.encumbrance.base
     local fatigueCost = jumpBase + encumbRatio * jumpMult
-    mobile.fatigue.current = math.max(0, mobile.fatigue.current - fatigueCost)
+    mob.fatigue.current = math.max(0, mob.fatigue.current - fatigueCost)
 end
 
-local function climbPlayer()
+local function climbPlayer(currentZ, destinationZ, speed)
     -- some bias to prevent clipping through floors
     if getCeilingDistance() < 20 then
         return
     end
 
-    local playerMob = tes3.mobilePlayer
-
-    -- if added directly, it will fight gravity badly
-    jumpPosition = jumpPosition + climbHeight / 60 * cSpeed * FatigInf
-
     -- equalizing instead gets consistent results
-    playerMob.reference.position.z = jumpPosition
+    tes3.player.position.z = currentZ + (destinationZ / 60 * speed * fatigueInfluence)
 
     -- tiny amount of velocity cancellation
-    -- not zero, zero disables gravity impact
-    playerMob.velocity.x = 0.01
-    playerMob.velocity.y = 0.01
-    playerMob.velocity.z = 0.01
-    playerMob.impulseVelocity.x = 0.01
-    playerMob.impulseVelocity.y = 0.01
-    playerMob.impulseVelocity.z = 0.01
+    -- not zero, it disables gravity impact
+    tes3.mobilePlayer.velocity = tes3vector3.new(0.01, 0.01, 0.01)
+    tes3.mobilePlayer.impulseVelocity = tes3vector3.new(0.01, 0.01, 0.01)
+
+    return tes3.player.position.z
 end
 
 local function playClimbingStartedSound()
@@ -88,82 +76,98 @@ local function playClimbingFinishedSound()
     tes3.playSound{sound = 'corpDRAG', volume = 0.1, pitch = 1.3}
 end
 
+local function startClimbing(destination, speed)
+    applyClimbingFatigueCost(tes3.mobilePlayer)
+
+    -- trigger the actual climbing function
+    local current = tes3.player.position.z
+    timer.start{
+        duration=1/60,
+        iterations=60/speed,
+        callback=function()
+            current = climbPlayer(current, destination, speed)
+        end,
+    }
+
+    -- trigger climbing started sound after 0.1s
+    timer.start{duration = 0.1, callback = playClimbingStartedSound}
+    -- trigger climbing finished sound after 0.7s
+    timer.start{duration = 0.7, callback = playClimbingFinishedSound}
+    -- clear climbing state after 0.4s
+    timer.start{duration = 0.4, callback = function() isClimbing = false end}
+
+    --mobilePlayer:exerciseSkill(tes3.skill.acrobatics, 1)
+end
+
 local function onClimbE(e)
-    -- disabled during jumping, by jumping I mean climbing
-    if (jumping == 1) then
+    local playerMob = tes3.mobilePlayer
+
+    if isClimbing then
         return
     elseif tes3ui.menuMode() then
         return
     elseif tes3.is3rdPerson() then
         return
-    elseif tes3.mobilePlayer.isFlying then
+    elseif playerMob.isFlying then
         return
     end
 
     -- prevent climbing while downed/dying/etc
-    local attackState = tes3.mobilePlayer.actionData.animationAttackState
+    local attackState = playerMob.actionData.animationAttackState
     if attackState ~= tes3.animationState.idle then
         return
     end
 
     -- disable during chargen, -1 is all done
-    if (tes3.getGlobal('ChargenState') ~= -1) then
+    if tes3.getGlobal('ChargenState') ~= -1 then
         return
     end
 
     -- down raycast
-    local result = frontDownCast()
-    if (result == nil) then
+    local destRayHit = frontDownCast()
+    if (destRayHit == nil) then
+        return
+    end
+
+    -- bail if already higher than destination
+    local zPos = playerMob.position.z
+    if zPos >= destRayHit.intersection.z then
         return
     end
 
     -- if there is enough room for PC height go on
-    local pHeight = tes3.mobilePlayer.height
-    if getCeilingDistance() < pHeight then
+    if getCeilingDistance() < playerMob.height then
         return
     end
 
     -- if below waist obstacle, do not attempt climbing
-    local zPos = tes3.player.position.z
-    if result.intersection.z < (zPos + pHeight * 0.5) then
+    local waistHeight = playerMob.height * 0.5
+    if destRayHit.intersection.z < (zPos + waistHeight) then
         return
-    end
-
-    -- let's start! finally...
-    local velPlayer = tes3.mobilePlayer.velocity
-    local velCurrent = math.abs(velPlayer.x) + math.abs(velPlayer.y)
-
-    -- stationary penalty
-    if (velCurrent < 100) then
-        cSpeed = 1.5
     end
 
     -- falling too fast
     -- acrobatics 25 fastfall 100 -1000
     -- acrobatics 100 fastfall 25 -2000
-    local fastfall = math.max(0, 125 - tes3.mobilePlayer.acrobatics.current)
-    if (fastfall ~= 0) then
-        if (velPlayer.z < -10 * (-1.5 * fastfall + 250)) then
+    local velocity = playerMob.velocity
+    local fastfall = 125 - playerMob.acrobatics.current
+    if fastfall > 0 then
+        if velocity.z < -10 * (-1.5 * fastfall + 250) then
             return
         end
     end
 
+    -- let's start! finally...
+    local speed = 2.0
+
+    -- stationary penalty
+    if (math.abs(velocity.x) + math.abs(velocity.y)) < 100 then
+        speed = 1.5
+    end
+
     -- how much to move upwards
     -- bias for player bounding box
-    climbHeight = (result.intersection.z - zPos) * acroInf + 70
-
-    if (zPos < result.intersection.z) then
-        jumpPosition = zPos
-        jumping = 1
-
-        timer.start(1 / 60, climbPlayer, 60 / cSpeed)
-        applyClimbingFatigueCost(tes3.mobilePlayer)
-
-        --mobilePlayer:exerciseSkill(tes3.skill.acrobatics, 1)
-
-        timer.start(0.1, playClimbingStartedSound)
-        timer.start(0.7, playClimbingFinishedSound)
-        timer.start(0.4, function() jumping = 0 end)
-    end
+    local destination = (destRayHit.intersection.z - zPos) * acrobaticsInfluence + 70
+    startClimbing(destination, speed)
 end
 event.register('keyDown', onClimbE, {filter = tes3.scanCode.e})
