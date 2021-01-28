@@ -39,14 +39,13 @@ local function frontDownCast()
     return tes3.rayTest{position = pos, direction = DOWN}
 end
 
-local function getCeilingHeight()
+local function getCeilingDistance()
     local eyePos = tes3.getPlayerEyePosition()
     local result = tes3.rayTest{position = eyePos, direction = UP}
     if result then
-        return result.intersection.z
-    else
-        return eyePos.z + 1000
+        return result.distance
     end
+    return math.huge
 end
 
 local function applyClimbingFatigueCost(mobile)
@@ -59,7 +58,7 @@ end
 
 local function climbPlayer()
     -- some bias to prevent clipping through floors
-    if (getCeilingHeight() < (tes3.getPlayerEyePosition().z + 20)) then
+    if getCeilingDistance() < 20 then
         return
     end
 
@@ -120,12 +119,13 @@ local function onClimbE(e)
 
     -- if there is enough room for PC height go on
     local pHeight = tes3.mobilePlayer.height
-    if (getCeilingHeight() - result.intersection.z) < pHeight then
+    if getCeilingDistance() < pHeight then
         return
     end
 
     -- if below waist obstacle, do not attempt climbing
-    if result.intersection.z < (tes3.getPlayerEyePosition().z - (pHeight * 0.5)) then
+    local zPos = tes3.player.position.z
+    if result.intersection.z < (zPos + pHeight * 0.5) then
         return
     end
 
@@ -150,10 +150,10 @@ local function onClimbE(e)
 
     -- how much to move upwards
     -- bias for player bounding box
-    climbHeight = (result.intersection.z - tes3.player.position.z) * acroInf + 70
+    climbHeight = (result.intersection.z - zPos) * acroInf + 70
 
-    if (tes3.player.position.z < result.intersection.z) then
-        jumpPosition = tes3.player.position.z
+    if (zPos < result.intersection.z) then
+        jumpPosition = zPos
         jumping = 1
 
         timer.start(1 / 60, climbPlayer, 60 / cSpeed)
