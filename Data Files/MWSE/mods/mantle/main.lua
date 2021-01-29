@@ -159,7 +159,7 @@ local function climbPlayer(currentZ, destinationZ, speed)
     -- some bias to prevent clipping through floors
     if getCeilingDistance() >= 20 then
         -- equalizing instead gets consistent results
-        tes3.player.position.z = currentZ + (destinationZ / 60 * speed * fatigueInfluence)
+        tes3.player.position.z = currentZ + (destinationZ / 60 * speed)
 
         -- tiny amount of velocity cancellation
         -- not zero, it disables gravity impact
@@ -269,7 +269,7 @@ local function onClimbE(e)
 
     -- how much to move upwards
     -- bias for player bounding box
-    destination = (destination.z - playerMob.position.z) * acrobaticsInfluence + 70
+    destination = (destination.z - playerMob.position.z) + 70
     startClimbing(destination, speed)
 end
 
