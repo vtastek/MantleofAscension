@@ -19,8 +19,17 @@ generalPage:createYesNoButton{
     description = "Climbing will increase Athletics skill...",
     variable = mwse.mcm.createTableVariable({id = "trainAthletics", table = config})
 }
-generalPage:createYesNoButton{
-    label = "Train Climbing",
-    description = "Climbing will increase Athletics skill... Requires Skill Module",
-    variable = mwse.mcm.createTableVariable({id = "trainClimbing", table = config})
-}
+
+local skillModule = include("OtherSkills.skillModule")
+if skillModule ~= nil then
+    generalPage:createYesNoButton{
+        label = "Train Climbing",
+        description = "Climbing will increase its own Climbing skill...",
+        variable = mwse.mcm.createTableVariable({id = "trainClimbing", table = config})
+    }
+else
+    generalPage:createHyperlink{
+        text = "You can get Skills Module to add Climbing Skill too!",
+        exec = 'start https://www.nexusmods.com/morrowind/mods/46034'
+    }
+end

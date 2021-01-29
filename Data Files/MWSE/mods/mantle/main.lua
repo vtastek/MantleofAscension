@@ -239,6 +239,8 @@ event.register('keyDown', onKeyDown)
 
 local function registerMCM(e)
     require("mantle.mcm")
+    mwse.log("Mantle: VVV")
+    mwse.log(json.encode(e, { indent = true } ))
 end
 event.register("modConfigReady", registerMCM)
 -------------
