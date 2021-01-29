@@ -93,7 +93,7 @@ end
 -- alternative rayTest function that also places a visualization
 local function debugRayTest(t)
     local rayhit = tes3.rayTest(t)
-    if t.widgetId and rayhit then
+    if t.widgetId and rayhit and config.enableDebugWidgets then
         debugPlaceWidget(t.widgetId, t.position, rayhit.intersection)
     end
     return rayhit

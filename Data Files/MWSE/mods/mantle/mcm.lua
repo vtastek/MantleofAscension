@@ -41,3 +41,9 @@ generalPage:createYesNoButton{
     description = "Third Person lacks animations, also Morrowind's janky physics makes it undesirable.",
     variable = mwse.mcm.createTableVariable({id = "disableThirdPerson", table = config})
 }
+
+generalPage:createYesNoButton{
+    label = "Enable Debug Widgets",
+    description = "Debug raycasts with widgets, only enable for debugging.",
+    variable = mwse.mcm.createTableVariable({id = "enableDebugWidgets", table = config})
+}
