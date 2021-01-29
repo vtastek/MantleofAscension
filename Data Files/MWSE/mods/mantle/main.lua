@@ -17,6 +17,55 @@ local UP = tes3vector3.new(0, 0, 1)
 local DOWN = tes3vector3.new(0, 0, -1)
 
 
+local function isClimbingActive(option)
+    if option then
+        return "active"
+    else
+        return "inactive"
+    end
+end
+
+local skillModuleClimb = include("OtherSkills.skillModule")
+
+local charGen
+local function checkCharGen()
+    if charGen.value == -1 then
+        event.unregister("simulate", checkCharGen)
+
+        local climbingDescription = (
+            "Climbing is good."
+        )
+        skillModuleClimb.registerSkill(
+            "climbing",
+            {
+                name = "Climbing",
+                icon = "Icons/vt/climbing.dds",
+                value = 10,
+                attribute =  tes3.attribute.strength,
+                description = climbingDescription,
+                specialization = tes3.specialization.stealth
+            }
+        )
+    end
+end
+local function onSkillsReady()
+    charGen = tes3.findGlobal("CharGenState")
+    event.register("simulate", checkCharGen)
+end
+event.register("OtherSkills:Ready", onSkillsReady)
+
+local function applyClimbingProgress()
+    skillModuleClimb.incrementSkill( "climbing", {progress = 1} )
+end
+
+local function applyAthleticsProgress(mob)
+    mob:exerciseSkill(tes3.skill.acrobatics, 1)
+end
+
+local function applyAcrobaticsProgress(mob)
+    mob:exerciseSkill(tes3.skill.acrobatics, 1)
+end
+
 --
 local function debugPlaceWidget(widgetId, position, intersection)
     local root = tes3.game.worldSceneGraphRoot.children[9]
@@ -142,6 +191,15 @@ end
 
 local function startClimbing(destination, speed)
     applyClimbingFatigueCost(tes3.mobilePlayer)
+    if skillModuleClimb ~= nil and config.trainClimbing then
+        applyClimbingProgress()
+    end
+    if config.trainAcrobatics then
+        applyAcrobaticsProgress(tes3.mobilePlayer)
+    end
+    if config.trainAthletics then
+       applyAthleticsProgress(tes3.mobilePlayer)
+    end
 
     -- trigger the actual climbing function
     local current = tes3.player.position.z
@@ -239,8 +297,6 @@ event.register('keyDown', onKeyDown)
 
 local function registerMCM(e)
     require("mantle.mcm")
-    mwse.log("Mantle: VVV")
-    mwse.log(json.encode(e, { indent = true } ))
 end
 event.register("modConfigReady", registerMCM)
 -------------
