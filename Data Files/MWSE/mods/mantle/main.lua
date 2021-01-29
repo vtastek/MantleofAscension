@@ -229,8 +229,8 @@ local function onClimbE(e)
         return
     elseif tes3ui.menuMode() then
         return
-    -- elseif tes3.is3rdPerson() then
-    --     return
+    elseif tes3.is3rdPerson() and config.disableThirdPerson then
+         return
     elseif playerMob.isFlying then
         return
     end

@@ -29,7 +29,15 @@ if skillModule ~= nil then
     }
 else
     generalPage:createHyperlink{
-        text = "You can get Skills Module to add Climbing Skill too!",
+        label = "You can get Skills Module to add Climbing Skill too!",
+        description = "Installing Skills Module will add Climbing skill as default.",
+        text = "https://www.nexusmods.com/morrowind/mods/46034",
         exec = 'start https://www.nexusmods.com/morrowind/mods/46034'
     }
 end
+
+generalPage:createYesNoButton{
+    label = "Disable Third Person",
+    description = "Third Person lacks animations, also Morrowind's janky physics makes it undesirable.",
+    variable = mwse.mcm.createTableVariable({id = "disableThirdPerson", table = config})
+}
