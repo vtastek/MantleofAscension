@@ -5,10 +5,6 @@
 local config = require("mantle.config")
 mwse.log("[Mantle of Ascension] initialized v0.0.1")
 
--- config
-local acrobaticsInfluence = 1.0 -- TODO
-local fatigueInfluence = 1.0 -- TODO
-
 -- state
 local isClimbing = false
 
@@ -17,13 +13,7 @@ local UP = tes3vector3.new(0, 0, 1)
 local DOWN = tes3vector3.new(0, 0, -1)
 
 
-local function isClimbingActive(option)
-    if option then
-        return "active"
-    else
-        return "inactive"
-    end
-end
+
 
 local skillModuleClimb = include("OtherSkills.skillModule")
 
@@ -43,7 +33,8 @@ local function checkCharGen()
                 value = 10,
                 attribute =  tes3.attribute.strength,
                 description = climbingDescription,
-                specialization = tes3.specialization.stealth
+                specialization = tes3.specialization.stealth,
+                active = config.trainClimbing and "active" or "inactive"
             }
         )
     end
@@ -59,11 +50,11 @@ local function applyClimbingProgress()
 end
 
 local function applyAthleticsProgress(mob)
-    mob:exerciseSkill(tes3.skill.acrobatics, 1)
+    mob:exerciseSkill(tes3.skill.athletics, 0.15)
 end
 
 local function applyAcrobaticsProgress(mob)
-    mob:exerciseSkill(tes3.skill.acrobatics, 1)
+    mob:exerciseSkill(tes3.skill.acrobatics, 0.15)
 end
 
 --

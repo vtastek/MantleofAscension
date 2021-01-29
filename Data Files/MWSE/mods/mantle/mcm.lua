@@ -21,11 +21,31 @@ generalPage:createYesNoButton{
 }
 
 local skillModule = include("OtherSkills.skillModule")
+
+local function checkClimbingSkillActive()
+    local isActive = config.trainClimbing and "active" or "inactive"
+    if skillModule ~= nil then
+        skillModule.updateSkill( "climbing", {active = isActive} )
+    end
+end
+
+local function getClimbSkillBool(self, value)
+   return config.trainClimbing
+end
+
+local function setClimbSkillBool(self, value)
+    config.trainClimbing = value
+    checkClimbingSkillActive()
+end
+
 if skillModule ~= nil then
     generalPage:createYesNoButton{
         label = "Train Climbing",
         description = "Climbing will increase its own Climbing skill...",
-        variable = mwse.mcm.createTableVariable({id = "trainClimbing", table = config})
+        variable = mwse.mcm:createVariable{
+            get = getClimbSkillBool,
+            set = setClimbSkillBool
+        }
     }
 else
     generalPage:createHyperlink{
