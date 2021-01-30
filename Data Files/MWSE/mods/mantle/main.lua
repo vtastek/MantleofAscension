@@ -45,8 +45,8 @@ local function onSkillsReady()
 end
 event.register("OtherSkills:Ready", onSkillsReady)
 
-local function applyClimbingProgress()
-    skillModuleClimb.incrementSkill( "climbing", {progress = 1} )
+local function applyClimbingProgress(value)
+    skillModuleClimb.incrementSkill( "climbing", {progress = value} )
 end
 
 local function applyAthleticsProgress(mob)
@@ -179,12 +179,17 @@ local function playClimbingFinishedSound()
     tes3.playSound{sound = 'corpDRAG', volume = 0.1, pitch = 1.3}
 end
 
-
 local function startClimbing(destination, speed)
     applyClimbingFatigueCost(tes3.mobilePlayer)
+
     if skillModuleClimb ~= nil and config.trainClimbing then
-        applyClimbingProgress()
+        local climbProgressHeight = math.max(0, tes3.player.position.z)
+        climbProgressHeight = math.min(climbProgressHeight, 10000)
+        climbProgressHeight = math.remap(climbProgressHeight, 0, 10000, 1, 5)
+        mwse.log(climbProgressHeight)
+        applyClimbingProgress(climbProgressHeight)
     end
+
     if config.trainAcrobatics then
         applyAcrobaticsProgress(tes3.mobilePlayer)
     end
@@ -255,6 +260,7 @@ local function onClimbE(e)
     local fastfall = 125 - playerMob.acrobatics.current
     if fastfall > 0 then
         if velocity.z < -10 * (-1.5 * fastfall + 250) then
+            applyClimbingProgress(5)
             return
         end
     end
