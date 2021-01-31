@@ -29,6 +29,8 @@ local function checkClimbingSkillActive()
     end
 end
 
+-- luacheck: ignore 212/self
+-- luacheck: ignore 212/value
 local function getClimbSkillBool(self, value)
    return config.trainClimbing
 end

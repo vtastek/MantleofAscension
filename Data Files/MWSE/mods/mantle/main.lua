@@ -1,4 +1,4 @@
--- mantle v0.1
+-- mantle v0.2
 -- by vtastek
 -- Adds climbing to Morrowind
 
@@ -96,6 +96,8 @@ local function getClimbingDestination()
     local position = tes3.player.position:copy()
     local direction = tes3.getPlayerEyeVector()
 
+    local dirVelocity = 1 + 0.1 * math.min(1, tes3.mobilePlayer.moveSpeed/400)
+
     -- clear direction z component and re-normalize
     -- this creates a "forward" vector without tilt
     direction.z = 0
@@ -111,10 +113,11 @@ local function getClimbingDestination()
     local destination = { z = -math.huge }
 
     -- doing 3 raycasts of varying amounts forward
-    for i, unitsForward in ipairs{99, 66, 33} do
+    for i, unitsForward in ipairs{0.99 * dirVelocity, 0.86 * dirVelocity,
+      0.73 * dirVelocity, 0.60 * dirVelocity, 0.47 * dirVelocity, 0.33} do
         local rayhit = debugRayTest{
             widgetId = ("widget_%s"):format(i),
-            position = position + (direction * unitsForward),
+            position = position + (direction * 160 * unitsForward * unitsForward * unitsForward),
             direction = DOWN,
             ignore = {tes3.player},
         }
@@ -159,7 +162,11 @@ local function climbPlayer(currentZ, destinationZ, speed)
     -- some bias to prevent clipping through floors
     if getCeilingDistance() >= 20 then
         -- equalizing instead gets consistent results
-        tes3.player.position.z = currentZ + (destinationZ / 60 * speed)
+        local verticalClimb = currentZ + (destinationZ / 600 * speed) - tes3.player.position.z
+
+        if verticalClimb > 0 then
+        tes3.player.position.z = currentZ + (destinationZ / 600 * speed)
+        end
 
         -- tiny amount of velocity cancellation
         -- not zero, it disables gravity impact
@@ -180,28 +187,11 @@ local function playClimbingFinishedSound()
 end
 
 local function startClimbing(destination, speed)
-    applyClimbingFatigueCost(tes3.mobilePlayer)
-
-    if skillModuleClimb ~= nil and config.trainClimbing then
-        local climbProgressHeight = math.max(0, tes3.player.position.z)
-        climbProgressHeight = math.min(climbProgressHeight, 10000)
-        climbProgressHeight = math.remap(climbProgressHeight, 0, 10000, 1, 5)
-        mwse.log(climbProgressHeight)
-        applyClimbingProgress(climbProgressHeight)
-    end
-
-    if config.trainAcrobatics then
-        applyAcrobaticsProgress(tes3.mobilePlayer)
-    end
-    if config.trainAthletics then
-       applyAthleticsProgress(tes3.mobilePlayer)
-    end
-
     -- trigger the actual climbing function
     local current = tes3.player.position.z
     timer.start{
-        duration=1/60,
-        iterations=60/speed,
+        duration=1/600,
+        iterations=600/speed,
         callback=function()
             current = climbPlayer(current, destination, speed)
         end,
@@ -217,7 +207,7 @@ local function startClimbing(destination, speed)
     --mobilePlayer:exerciseSkill(tes3.skill.acrobatics, 1)
 end
 
-
+-- luacheck: ignore 212/e
 local function onClimbE(e)
     local playerMob = tes3.mobilePlayer
 
@@ -247,13 +237,7 @@ local function onClimbE(e)
         return
     end
 
-    -- down raycast
-    local destination = getClimbingDestination()
-    if (destination == nil) then
-        return
-    end
-
-    -- falling too fast
+        -- falling too fast
     -- acrobatics 25 fastfall 100 -1000
     -- acrobatics 100 fastfall 25 -2000
     local velocity = playerMob.velocity
@@ -261,15 +245,24 @@ local function onClimbE(e)
     if fastfall > 0 then
         if velocity.z < -10 * (-1.5 * fastfall + 250) then
             applyClimbingProgress(5)
+            -- mwse.log("too fast")
             return
         end
     end
+
+    -- down raycast
+    local destination = getClimbingDestination()
+    if (destination == nil) then
+        return
+    end
+
+
 
     -- let's start! finally...
     local speed = 2.0
 
     -- stationary penalty
-    if (math.abs(velocity.x) + math.abs(velocity.y)) < 100 then
+    if (playerMob.moveSpeed) < 100 then
         speed = 1.5
     end
 
@@ -277,6 +270,23 @@ local function onClimbE(e)
     -- bias for player bounding box
     destination = (destination.z - playerMob.position.z) + 70
     startClimbing(destination, speed)
+
+    applyClimbingFatigueCost(tes3.mobilePlayer)
+
+    if skillModuleClimb ~= nil and config.trainClimbing then
+        local climbProgressHeight = math.max(0, tes3.player.position.z)
+        climbProgressHeight = math.min(climbProgressHeight, 10000)
+        climbProgressHeight = math.remap(climbProgressHeight, 0, 10000, 1, 5)
+        -- mwse.log(climbProgressHeight)
+        applyClimbingProgress(climbProgressHeight)
+    end
+
+    if config.trainAcrobatics then
+        applyAcrobaticsProgress(tes3.mobilePlayer)
+    end
+    if config.trainAthletics then
+       applyAthleticsProgress(tes3.mobilePlayer)
+    end
 end
 
 local function isJumpkey(keyCode)
