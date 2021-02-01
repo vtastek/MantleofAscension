@@ -183,10 +183,11 @@ local function playClimbingInterruptedSound()
     tes3.playSound{sound = 'Item Armor Light Down', volume = 0.3, pitch = 1.3}
 end
 
-local function startClimbing(destination, speed, penalty)
+local function startClimbing(destination, penalty)
     isClimbing = true
 
     -- trigger the actual climbing function
+    local speed = (tes3.mobilePlayer.moveSpeed < 100) and 1.5 or 2.0
     timer.start{
         duration=1/600,
         iterations=600/speed,
@@ -254,16 +255,6 @@ local function onClimbE(e)
         return
     end
 
-
-
-    -- let's start! finally...
-    local speed = 2.0
-
-    -- stationary penalty
-    if (playerMob.moveSpeed) < 100 then
-        speed = 1.5
-    end
-
     -- how much to move upwards
     -- bias for player bounding box
     destination = (destination.z - playerMob.position.z) + 70
@@ -300,13 +291,12 @@ local function onClimbE(e)
     playerMob.fatigue.current = math.max(0, playerMob.fatigue.current - fatigueCost)
 
     local penalty = 0.4
-    if tes3.mobilePlayer.fatigue.current < fatigueCost or encumbRatio > 0.85 then
+    if (playerMob.fatigue.current < fatigueCost) or (encumbRatio > 0.85) then
         destination = destination - playerMob.height * 0.8
         timer.start{duration = 0.8, callback = playClimbingInterruptedSound}
         penalty = 2.0
     end
-
-    startClimbing(destination, speed, penalty)
+    startClimbing(destination, penalty)
 
     -- applyClimbingFatigueCost(tes3.mobilePlayer)
 
