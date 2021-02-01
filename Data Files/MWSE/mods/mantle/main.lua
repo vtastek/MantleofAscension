@@ -44,6 +44,39 @@ local function onSkillsReady()
 end
 event.register("OtherSkills:Ready", onSkillsReady)
 
+local function applyClimbingFatigueCost()
+    local mob = tes3.mobilePlayer
+
+    -- get vanilla jump cost
+    local jumpBase = tes3.findGMST('fFatigueJumpBase').value
+    local jumpMult = tes3.findGMST('fFatigueJumpMult').value
+    local encRatio = mob.encumbrance.current / mob.encumbrance.base
+    local jumpCost = jumpBase + encRatio * jumpMult
+
+    -- get climbing cost
+    local skillCheckAverage = 0
+    local skillCheckDivider = 0
+    if config.trainAcrobatics then
+        skillCheckAverage = mob.acrobatics.current
+        skillCheckDivider = 1
+    end
+    if config.trainAthletics then
+        skillCheckAverage = skillCheckAverage + mob.athletics.current
+        skillCheckDivider = skillCheckDivider + 1
+    end
+    if skillModuleClimb ~= nil and config.trainClimbing then
+        skillCheckAverage = skillCheckAverage + skillModuleClimb.getSkill("climbing").value
+        skillCheckDivider = skillCheckDivider + 1
+    end
+    if skillCheckDivider > 0 then
+        skillCheckAverage = skillCheckAverage / skillCheckDivider -- only divide for the active skills
+    end
+    skillCheckAverage = math.max(0.1, 1 - skillCheckAverage / 100)
+    local fatigueCost = jumpCost * 2 * skillCheckAverage
+
+    tes3.modStatistic{reference=mob, name="fatigue", current=(-fatigueCost), limit=true}
+end
+
 local function applyClimbingProgress(value)
     skillModuleClimb.incrementSkill( "climbing", {progress = value} )
 end
@@ -255,50 +288,21 @@ local function onClimbE(e)
         return
     end
 
+    applyClimbingFatigueCost()
+
     -- how much to move upwards
     -- bias for player bounding box
     destination = (destination.z - playerMob.position.z) + 70
 
-    local jumpBase = tes3.findGMST('fFatigueJumpBase').value
-    local jumpMult = tes3.findGMST('fFatigueJumpMult').value
-    local encumbRatio = playerMob.encumbrance.current / playerMob.encumbrance.base
-
-    local skillCheckAverage = 0
-    local skillCheckDivider = 0
-
-    if config.trainAcrobatics then
-        skillCheckAverage = tes3.mobilePlayer:getSkillValue(tes3.skill.acrobatics)
-        skillCheckDivider = 1
-    end
-    if config.trainAthletics then
-        skillCheckAverage = skillCheckAverage + tes3.mobilePlayer:getSkillValue(tes3.skill.athletics)
-        skillCheckDivider = skillCheckDivider + 1
-    end
-    if skillModuleClimb ~= nil and config.trainClimbing then
-        skillCheckAverage = skillCheckAverage + skillModuleClimb.getSkill("climbing").value
-        skillCheckDivider = skillCheckDivider + 1
-    end
-
-    if skillCheckDivider > 0 then
-        skillCheckAverage = skillCheckAverage / skillCheckDivider -- only divide for the active skills
-    end
-
-    skillCheckAverage = math.max(0.1, 1 - skillCheckAverage / 100)
-
-    local fatigueCost = jumpBase + encumbRatio * jumpMult
-    fatigueCost = fatigueCost * 2 * skillCheckAverage
-
-    playerMob.fatigue.current = math.max(0, playerMob.fatigue.current - fatigueCost)
-
+    --
     local penalty = 0.4
-    if (playerMob.fatigue.current < fatigueCost) or (encumbRatio > 0.85) then
+    local encumbRatio = playerMob.encumbrance.current / playerMob.encumbrance.base
+    if (playerMob.fatigue.current <= 0) or (encumbRatio > 0.85) then
         destination = destination - playerMob.height * 0.8
         timer.start{duration = 0.8, callback = playClimbingInterruptedSound}
         penalty = 2.0
     end
     startClimbing(destination, penalty)
-
-    -- applyClimbingFatigueCost(tes3.mobilePlayer)
 
     if skillModuleClimb ~= nil and config.trainClimbing then
         local climbProgressHeight = math.max(0, tes3.player.position.z)
