@@ -37,7 +37,7 @@ local function getForwardVelocity()
 
     -- velocity is zero when not jumping
     -- so we calculate it from movespeed
-    if velocity:length() == 0 then
+    if not mob.isJumping then
         if mob.isMovingForward then
             velocity = direction * mob.moveSpeed
         else
