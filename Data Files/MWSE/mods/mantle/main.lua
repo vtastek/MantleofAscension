@@ -216,11 +216,11 @@ local function playClimbingInterruptedSound()
     tes3.playSound{sound = 'Item Armor Light Down', volume = 0.3, pitch = 1.3}
 end
 
-local function startClimbing(destination, penalty)
-    isClimbing = true
+local function startClimbing(destination)
+    local mob = tes3.mobilePlayer
 
     -- trigger the actual climbing function
-    local speed = (tes3.mobilePlayer.moveSpeed < 100) and 1.5 or 2.0
+    local speed = (mob.moveSpeed < 100) and 1.5 or 2.0
     timer.start{
         duration=1/600,
         iterations=600/speed,
@@ -231,16 +231,24 @@ local function startClimbing(destination, penalty)
 
     -- trigger climbing started sound after 0.1s
     timer.start{duration = 0.1, callback = playClimbingStartedSound}
+
     -- trigger climbing finished sound after 0.7s
     timer.start{duration = 0.7, callback = playClimbingFinishedSound}
-    -- clear climbing state after 0.4s
-    timer.start{duration = penalty, callback = function() isClimbing = false end}
 
-    --mobilePlayer:exerciseSkill(tes3.skill.acrobatics, 1)
+    -- clear climbing state after 0.4s
+    local penalty = 0.4
+    local encumbRatio = mob.encumbrance.current / mob.encumbrance.base
+    if (mob.fatigue.current <= 0) or (encumbRatio > 0.85) then
+        destination = destination - mob.height * 0.8
+        timer.start{duration = 0.8, callback = playClimbingInterruptedSound}
+        penalty = 2.0
+    end
+    isClimbing = true
+    timer.start{duration = penalty, callback = function() isClimbing = false end}
 end
 
 -- luacheck: ignore 212/e
-local function onClimbE(e)
+local function onKeyDownJump(e)
     local playerMob = tes3.mobilePlayer
 
     if isClimbing then
@@ -288,21 +296,13 @@ local function onClimbE(e)
         return
     end
 
+    --
     applyClimbingFatigueCost()
 
     -- how much to move upwards
     -- bias for player bounding box
     destination = (destination.z - playerMob.position.z) + 70
-
-    --
-    local penalty = 0.4
-    local encumbRatio = playerMob.encumbrance.current / playerMob.encumbrance.base
-    if (playerMob.fatigue.current <= 0) or (encumbRatio > 0.85) then
-        destination = destination - playerMob.height * 0.8
-        timer.start{duration = 0.8, callback = playClimbingInterruptedSound}
-        penalty = 2.0
-    end
-    startClimbing(destination, penalty)
+    startClimbing(destination)
 
     if skillModuleClimb ~= nil and config.trainClimbing then
         local climbProgressHeight = math.max(0, tes3.player.position.z)
@@ -328,7 +328,7 @@ local function onKeyDown(e)
     if not (e.pressed and isJumpkey(e.keyCode)) then
         return
     end
-    onClimbE()
+    onKeyDownJump()
 end
 event.register('keyDown', onKeyDown)
 
