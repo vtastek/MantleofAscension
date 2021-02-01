@@ -97,7 +97,7 @@ local function getClimbingDestination()
     local position = tes3.player.position:copy()
     local direction = tes3.getPlayerEyeVector()
 
-    local dirVelocity = 1 + 0.1 * math.min(1, tes3.mobilePlayer.moveSpeed/400)
+    local dirVelocity = 1 + 0.5 * math.min(1, tes3.mobilePlayer.moveSpeed/400)
 
     -- clear direction z component and re-normalize
     -- this creates a "forward" vector without tilt
@@ -118,7 +118,7 @@ local function getClimbingDestination()
       0.73 * dirVelocity, 0.60 * dirVelocity, 0.47 * dirVelocity, 0.33} do
         local rayhit = debugRayTest{
             widgetId = ("widget_%s"):format(i),
-            position = position + (direction * 160 * unitsForward * unitsForward * unitsForward),
+            position = position + (direction * 80 * unitsForward * unitsForward * unitsForward),
             direction = DOWN,
             ignore = {tes3.player},
         }
