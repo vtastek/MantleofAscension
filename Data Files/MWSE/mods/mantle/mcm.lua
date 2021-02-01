@@ -1,6 +1,6 @@
 local config = require("mantle.config")
 
-local template = mwse.mcm.createTemplate{name="Mantle of Ascension"}
+local template = mwse.mcm.createTemplate{name = "Mantle of Ascension"}
 template:saveOnClose("mantle", config)
 template:register()
 

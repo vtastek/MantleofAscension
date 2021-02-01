@@ -14,57 +14,59 @@ local isClimbing = false
 local UP = tes3vector3.new(0, 0, 1)
 local DOWN = tes3vector3.new(0, 0, -1)
 
-local function applyClimbingFatigueCost()
-    local mob = tes3.mobilePlayer
+local function getJumpExperienceValue()
+    return tes3.getSkill(tes3.skill.acrobatics).actions[1]
+end
 
-    -- get vanilla jump cost
+local function getJumpFatigueCost()
     local jumpBase = tes3.findGMST('fFatigueJumpBase').value
     local jumpMult = tes3.findGMST('fFatigueJumpMult').value
-    local encRatio = mob.encumbrance.current / mob.encumbrance.base
-    local jumpCost = jumpBase + encRatio * jumpMult
+    local encRatio = tes3.mobilePlayer.encumbrance.current / tes3.mobilePlayer.encumbrance.base
+    return jumpBase + encRatio * jumpMult
+end
 
-    -- get climbing cost
+local function applyClimbingFatigueCost()
     local skillCheckAverage = 0
     local skillCheckDivider = 0
+
     if config.trainAcrobatics then
-        skillCheckAverage = mob.acrobatics.current
+        skillCheckAverage = tes3.mobilePlayer.acrobatics.current
         skillCheckDivider = 1
     end
+
     if config.trainAthletics then
-        skillCheckAverage = skillCheckAverage + mob.athletics.current
+        skillCheckAverage = skillCheckAverage + tes3.mobilePlayer.athletics.current
         skillCheckDivider = skillCheckDivider + 1
     end
+
     if skillModuleClimb ~= nil and config.trainClimbing then
         skillCheckAverage = skillCheckAverage + skillModuleClimb.getSkill("climbing").value
         skillCheckDivider = skillCheckDivider + 1
     end
+
     if skillCheckDivider > 0 then
         skillCheckAverage = skillCheckAverage / skillCheckDivider -- only divide for the active skills
     end
+
     skillCheckAverage = math.max(0.1, 1 - skillCheckAverage / 100)
-    local fatigueCost = jumpCost * 2 * skillCheckAverage
+    local climbCost = getJumpFatigueCost() * 2 * skillCheckAverage
 
-    tes3.modStatistic{reference=mob, name="fatigue", current=(-fatigueCost), limit=true}
-end
-
-local function applyClimbingProgress(value)
-    skillModuleClimb.incrementSkill( "climbing", {progress = value} )
-end
-
-local function getJumpExperienceValue()
-    local skill = tes3.getSkill(tes3.skill.acrobatics)
-    return skill.actions[1]
-end
-
-local function applyAthleticsProgress(mob)
-    mob:exerciseSkill(tes3.skill.athletics, getJumpExperienceValue())
+    tes3.modStatistic{reference = tes3.player, name = "fatigue", current = (-climbCost), limit = true}
 end
 
 local function applyAcrobaticsProgress(mob)
     mob:exerciseSkill(tes3.skill.acrobatics, getJumpExperienceValue())
 end
 
---
+local function applyAthleticsProgress(mob)
+    mob:exerciseSkill(tes3.skill.athletics, getJumpExperienceValue())
+end
+
+local function applyClimbingProgress(value)
+    skillModuleClimb.incrementSkill("climbing", {progress = value})
+end
+
+-- place a widget to help visual rayTest results
 local function debugPlaceWidget(widgetId, position, intersection)
     local root = tes3.game.worldSceneGraphRoot.children[9]
     assert(root.name == "WorldVFXRoot")
@@ -88,15 +90,23 @@ local function debugPlaceWidget(widgetId, position, intersection)
     root:updateNodeEffects()
 end
 
--- alternative rayTest function that also places a visualization
-local function debugRayTest(t)
+-- rayTest wrapper that also places a visual aid
+local function rayTest(t)
     local rayhit = tes3.rayTest(t)
-    if t.widgetId and rayhit and config.enableDebugWidgets then
+    if rayhit and t.widgetId and config.enableDebugWidgets then
         debugPlaceWidget(t.widgetId, t.position, rayhit.intersection)
     end
     return rayhit
 end
----
+
+-- playSound wrapper that accepts time delay parameter
+local function playSound(t)
+    if t.delay == nil then
+        tes3.playSound(t)
+    else
+        timer.start{duration = t.delay, callback = function() tes3.playSound(t) end}
+    end
+end
 
 local function getClimbingDestination()
     local position = tes3.player.position:copy()
@@ -127,7 +137,7 @@ local function getClimbingDestination()
         0.47 * dirVelocity,
         0.33 -- first ray does not need to be changed
     } do
-        local rayhit = debugRayTest{
+        local rayhit = rayTest{
             widgetId = ("widget_%s"):format(i),
             position = position + (direction * 80 * unitsForward ^ 3),
             direction = DOWN,
@@ -144,7 +154,7 @@ local function getClimbingDestination()
         end
     end
 
-    -- if x/y are undefined then all racasts failed
+    -- if x/y are undefined then all raycasts failed
     if destination.x and destination.y then
         return destination
     end
@@ -152,7 +162,7 @@ end
 
 local function getCeilingDistance()
     local eyePos = tes3.getPlayerEyePosition()
-    local result = tes3.rayTest{position = eyePos, direction = UP, ignore={tes3.player}}
+    local result = tes3.rayTest{position = eyePos, direction = UP, ignore = {tes3.player}}
     if result then
         return result.distance
     end
@@ -161,24 +171,16 @@ end
 
 local function climbPlayer(destinationZ, speed)
     -- some bias to prevent clipping through floors
-    if getCeilingDistance() >= 20 then
-        local mob = tes3.mobilePlayer
-        local pos = mob.reference.position
+    if getCeilingDistance() < 20 then return end
 
-        -- equalizing instead gets consistent results
-        local verticalClimb = pos.z + (destinationZ / 600 * speed) - pos.z
-        if verticalClimb > 0 then
-            pos.z = pos.z + (destinationZ / 600 * speed)
-            mob.velocity = tes3vector3.new(0, 0, 0)
-        end
-    end
-end
+    local mob = tes3.mobilePlayer
+    local pos = mob.reference.position
 
-local function playSound(t)
-    if t.delay == nil then
-        tes3.playSound(t)
-    else
-        timer.start{duration = t.delay, callback = function() tes3.playSound(t) end}
+    -- equalizing instead gets consistent results
+    local verticalClimb = pos.z + (destinationZ / 600 * speed) - pos.z
+    if verticalClimb > 0 then
+        pos.z = pos.z + (destinationZ / 600 * speed)
+        mob.velocity = tes3vector3.new(0, 0, 0)
     end
 end
 
@@ -188,9 +190,9 @@ local function startClimbing(destination)
     -- trigger the actual climbing function
     local speed = (mob.moveSpeed < 100) and 1.5 or 2.0
     timer.start{
-        duration=1/600,
-        iterations=600/speed,
-        callback=function()
+        duration = 1/600,
+        iterations = 600/speed,
+        callback = function()
             climbPlayer(destination, speed)
         end,
     }
@@ -215,20 +217,20 @@ end
 
 -- luacheck: ignore 212/e
 local function onKeyDownJump(e)
-    local playerMob = tes3.mobilePlayer
+    local mob = tes3.mobilePlayer
 
     if isClimbing then
+        return
+    elseif mob.isFlying then
         return
     elseif tes3ui.menuMode() then
         return
     elseif tes3.is3rdPerson() and config.disableThirdPerson then
          return
-    elseif playerMob.isFlying then
-        return
     end
 
     -- prevent climbing while downed/dying/etc
-    local attackState = playerMob.actionData.animationAttackState
+    local attackState = mob.actionData.animationAttackState
     if attackState ~= tes3.animationState.idle then
         return
     end
@@ -239,15 +241,15 @@ local function onKeyDownJump(e)
     end
 
     -- if there is enough room for PC height go on
-    if getCeilingDistance() < playerMob.height then
+    if getCeilingDistance() < mob.height then
         return
     end
 
-        -- falling too fast
+    -- falling too fast
     -- acrobatics 25 fastfall 100 -1000
     -- acrobatics 100 fastfall 25 -2000
-    local velocity = playerMob.velocity
-    local fastfall = 125 - playerMob.acrobatics.current
+    local velocity = mob.velocity
+    local fastfall = 125 - mob.acrobatics.current
     if fastfall > 0 then
         if velocity.z < -10 * (-1.5 * fastfall + 250) then
             applyClimbingProgress(5)
@@ -267,7 +269,7 @@ local function onKeyDownJump(e)
 
     -- how much to move upwards
     -- bias for player bounding box
-    destination = (destination.z - playerMob.position.z) + 70
+    destination = (destination.z - mob.position.z) + 70
     startClimbing(destination)
 
     if skillModuleClimb ~= nil and config.trainClimbing then
