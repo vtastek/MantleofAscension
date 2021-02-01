@@ -24,7 +24,7 @@ local function checkCharGen()
 
         local climbingDescription = (
             "Climbing is a skill checked whenever one attempts to scale a wall or a steep incline." ..
-             " Skilled inviduals can climb longer by getting exhausted later."
+             " Skilled individuals can climb longer by getting exhausted later."
         )
         skillModuleClimb.registerSkill(
             "climbing",
