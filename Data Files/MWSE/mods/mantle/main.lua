@@ -184,6 +184,8 @@ local function playClimbingInterruptedSound()
 end
 
 local function startClimbing(destination, speed, penalty)
+    isClimbing = true
+
     -- trigger the actual climbing function
     timer.start{
         duration=1/600,
@@ -304,7 +306,6 @@ local function onClimbE(e)
         penalty = 2.0
     end
 
-    isClimbing = true
     startClimbing(destination, speed, penalty)
 
     -- applyClimbingFatigueCost(tes3.mobilePlayer)
