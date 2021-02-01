@@ -5,17 +5,14 @@
 local config = require("mantle.config")
 mwse.log("[Mantle of Ascension] initialized v0.0.1")
 
+local skillModuleClimb = include("OtherSkills.skillModule")
+
 -- state
 local isClimbing = false
 
 -- constants
 local UP = tes3vector3.new(0, 0, 1)
 local DOWN = tes3vector3.new(0, 0, -1)
-
-
-
-
-local skillModuleClimb = include("OtherSkills.skillModule")
 
 local charGen
 local function checkCharGen()
@@ -40,6 +37,7 @@ local function checkCharGen()
         )
     end
 end
+
 local function onSkillsReady()
     charGen = tes3.findGlobal("CharGenState")
     event.register("simulate", checkCharGen)
@@ -92,7 +90,6 @@ local function debugRayTest(t)
 end
 ---
 
-
 local function getClimbingDestination()
     local position = tes3.player.position:copy()
     local direction = tes3.getPlayerEyeVector()
@@ -113,9 +110,15 @@ local function getClimbingDestination()
     -- variable for holding the final destination
     local destination = { z = -math.huge }
 
-    -- doing 3 raycasts of varying amounts forward
-    for i, unitsForward in ipairs{0.99 * dirVelocity, 0.86 * dirVelocity,
-      0.73 * dirVelocity, 0.60 * dirVelocity, 0.47 * dirVelocity, 0.33} do
+    -- doing N raycasts of varying amounts forward
+    for i, unitsForward in ipairs{
+        0.99 * dirVelocity,
+        0.86 * dirVelocity,
+        0.73 * dirVelocity,
+        0.60 * dirVelocity,
+        0.47 * dirVelocity,
+        0.33
+    } do
         local rayhit = debugRayTest{
             widgetId = ("widget_%s"):format(i),
             position = position + (direction * 160 * unitsForward * unitsForward * unitsForward),
@@ -138,7 +141,6 @@ local function getClimbingDestination()
         return destination
     end
 end
-
 
 local function getCeilingDistance()
     local eyePos = tes3.getPlayerEyePosition()
@@ -167,11 +169,9 @@ local function climbPlayer(currentZ, destinationZ, speed)
     return tes3.player.position.z
 end
 
-
 local function playClimbingStartedSound()
     tes3.playSound{sound = 'corpDRAG', volume = 0.4, pitch = 0.8}
 end
-
 
 local function playClimbingFinishedSound()
     tes3.playSound{sound = 'corpDRAG', volume = 0.1, pitch = 1.3}
@@ -334,11 +334,9 @@ local function onKeyDown(e)
     end
     onClimbE()
 end
-
 event.register('keyDown', onKeyDown)
 
 local function registerMCM(e)
     require("mantle.mcm")
 end
 event.register("modConfigReady", registerMCM)
--------------
