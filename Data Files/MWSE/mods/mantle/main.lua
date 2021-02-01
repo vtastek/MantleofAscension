@@ -33,18 +33,16 @@ local function getForwardVelocity()
     direction:normalize()
 
     local mob = tes3.mobilePlayer
-    local velocity = mob.velocity:copy()
+    local velocity = mob.velocity
 
     -- velocity is zero when not jumping
     -- so we calculate it from movespeed
     if not mob.isJumping then
         if mob.isMovingForward then
             velocity = direction * mob.moveSpeed
-        else
-            velocity = direction * (mob.isWalking and 100 or 175)
-        end
-        if mob.isMovingLeft or mob.isMovingRight then
-            velocity = velocity * 0.5
+            if mob.isMovingLeft or mob.isMovingRight then
+                velocity = velocity * 0.5
+            end
         end
     end
 
