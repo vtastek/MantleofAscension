@@ -48,7 +48,7 @@ local function getForwardVelocity()
         end
     end
 
-    return direction * velocity:dot(direction)
+    return direction * math.max(100, velocity:dot(direction))
 end
 
 local function applyClimbingFatigueCost()
@@ -148,17 +148,10 @@ local function getClimbingDestination()
 
     -- doing N raycasts of varying amounts forward
     local forwardVelocity = getForwardVelocity()
-    for i, step in ipairs{
-        0.990,
-        0.860,
-        0.730,
-        0.600,
-        0.470,
-        0.033 -- first ray does not need to be changed
-    } do
+    for i=1, 6 do
         local rayhit = rayTest{
             widgetId = ("widget_%s"):format(i),
-            position = position + forwardVelocity * step,
+            position = position + forwardVelocity * (i/6)^3,
             direction = DOWN,
             ignore = {tes3.player},
         }
