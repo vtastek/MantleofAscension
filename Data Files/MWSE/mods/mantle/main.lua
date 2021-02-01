@@ -307,10 +307,6 @@ local function onKeyDownJump(e)
     end
 end
 
-local function isJumpkey(keyCode)
-    return keyCode == tes3.worldController.inputController.inputMaps[tes3.keybind.jump+1].code
-end
-
 -- events
 local function registerMCM(e)
     require("mantle.mcm")
@@ -342,8 +338,13 @@ local function onSkillsReady()
 end
 event.register("OtherSkills:Ready", onSkillsReady)
 
+local jumpKey
+event.register("initialized", function()
+    jumpKey = tes3.worldController.inputController.inputMaps[tes3.keybind.jump + 1]
+end)
+
 local function onKeyDown(e)
-    if e.pressed and isJumpkey(e.keyCode) then
+    if e.pressed and (e.keyCode == jumpKey.code) then
         onKeyDownJump()
     end
 end
