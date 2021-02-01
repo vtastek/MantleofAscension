@@ -133,7 +133,6 @@ local function playSound(t)
 end
 
 local function getClimbingDestination()
-
     -- get the minimum obstacle height (pc waist)
     local position = tes3.player.position:copy()
     local minHeight = tes3.mobilePlayer.height * 0.5
@@ -144,13 +143,18 @@ local function getClimbingDestination()
     -- we do raycasts from 200 units above player
     position.z = position.z + 200
 
+    -- clear direction z component and re-normalize
+    -- this creates a "forward" vector without tilt
+    local direction = tes3.getPlayerEyeVector()
+    direction.z = 0
+    direction:normalize()
+
     -- doing N raycasts of varying amounts forward
     local isStairs = true
-    local forwardVelocity = getForwardVelocity()
-    for i=1, 6 do
+    for i=2, 10 do
         local rayhit = rayTest{
             widgetId = "widget_" .. i,
-            position = position + forwardVelocity * (i * 0.1),
+            position = position + direction * (i * 50/3),
             direction = DOWN,
             ignore = {tes3.player},
         }
@@ -282,7 +286,7 @@ local function onKeyDownJump(e)
     end
 
     --
-    applyClimbingFatigueCost()
+    -- applyClimbingFatigueCost()
 
     -- how much to move upwards
     -- bias for player bounding box
