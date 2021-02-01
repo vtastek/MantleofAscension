@@ -25,12 +25,19 @@ local function getJumpFatigueCost()
     return jumpBase + encRatio * jumpMult
 end
 
-local function getCurrentVelocity(direction)
+local function getForwardVelocity()
+    -- clear direction z component and re-normalize
+    -- this creates a "forward" vector without tilt
+    local direction = tes3.getPlayerEyeVector()
+    direction.z = 0
+    direction:normalize()
+
     local mob = tes3.mobilePlayer
     local velocity = mob.velocity:copy()
+
+    -- velocity is zero when not jumping
+    -- so we calculate it from movespeed
     if velocity:length() == 0 then
-        -- velocity is zero when not jumping
-        -- so we calculate it from movespeed
         if mob.isMovingForward then
             velocity = direction * mob.moveSpeed
         else
@@ -40,7 +47,8 @@ local function getCurrentVelocity(direction)
             velocity = velocity * 0.5
         end
     end
-    return velocity
+
+    return direction * velocity:dot(direction)
 end
 
 local function applyClimbingFatigueCost()
@@ -127,15 +135,6 @@ local function playSound(t)
 end
 
 local function getClimbingDestination()
-    -- clear direction z component and re-normalize
-    -- this creates a "forward" vector without tilt
-    local direction = tes3.getPlayerEyeVector()
-    direction.z = 0
-    direction:normalize()
-
-    -- get our forward velocity
-    local velocity = getCurrentVelocity(direction)
-    local forwardVelocity = direction * velocity:dot(direction)
 
     -- get the minimum obstacle height (pc waist)
     local position = tes3.player.position:copy()
@@ -148,6 +147,7 @@ local function getClimbingDestination()
     local destination = { z = -math.huge }
 
     -- doing N raycasts of varying amounts forward
+    local forwardVelocity = getForwardVelocity()
     for i, step in ipairs{
         0.990,
         0.860,
