@@ -14,36 +14,6 @@ local isClimbing = false
 local UP = tes3vector3.new(0, 0, 1)
 local DOWN = tes3vector3.new(0, 0, -1)
 
-local charGen
-local function checkCharGen()
-    if charGen.value == -1 then
-        event.unregister("simulate", checkCharGen)
-
-        local climbingDescription = (
-            "Climbing is a skill checked whenever one attempts to scale a wall or a steep incline." ..
-             " Skilled individuals can climb longer by getting exhausted later."
-        )
-        skillModuleClimb.registerSkill(
-            "climbing",
-            {
-                name = "Climbing",
-                icon = "Icons/vt/climbing.dds",
-                value = 10,
-                attribute =  tes3.attribute.strength,
-                description = climbingDescription,
-                specialization = tes3.specialization.stealth,
-                active = config.trainClimbing and "active" or "inactive"
-            }
-        )
-    end
-end
-
-local function onSkillsReady()
-    charGen = tes3.findGlobal("CharGenState")
-    event.register("simulate", checkCharGen)
-end
-event.register("OtherSkills:Ready", onSkillsReady)
-
 local function applyClimbingFatigueCost()
     local mob = tes3.mobilePlayer
 
@@ -320,15 +290,40 @@ local function isJumpkey(keyCode)
     return keyCode == tes3.worldController.inputController.inputMaps[tes3.keybind.jump+1].code
 end
 
-local function onKeyDown(e)
-    if not (e.pressed and isJumpkey(e.keyCode)) then
-        return
-    end
-    onKeyDownJump()
-end
-event.register('keyDown', onKeyDown)
-
+-- events
 local function registerMCM(e)
     require("mantle.mcm")
 end
 event.register("modConfigReady", registerMCM)
+
+local function onSkillsReady()
+    local charGen = tes3.findGlobal("CharGenState")
+    local function checkCharGen()
+        if charGen.value ~= -1 then return end
+        skillModuleClimb.registerSkill(
+            "climbing",
+            {
+                name = "Climbing",
+                icon = "Icons/vt/climbing.dds",
+                description = (
+                    "Climbing is a skill checked whenever one attempts to scale a wall or a steep incline." ..
+                    " Skilled individuals can climb longer by getting exhausted later."
+                ),
+                value = 10,
+                attribute =  tes3.attribute.strength,
+                specialization = tes3.specialization.stealth,
+                active = config.trainClimbing and "active" or "inactive"
+            }
+        )
+        event.unregister("simulate", checkCharGen)
+    end
+    event.register("simulate", checkCharGen)
+end
+event.register("OtherSkills:Ready", onSkillsReady)
+
+local function onKeyDown(e)
+    if e.pressed and isJumpkey(e.keyCode) then
+        onKeyDownJump()
+    end
+end
+event.register('keyDown', onKeyDown)
