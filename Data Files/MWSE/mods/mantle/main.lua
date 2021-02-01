@@ -48,12 +48,17 @@ local function applyClimbingProgress(value)
     skillModuleClimb.incrementSkill( "climbing", {progress = value} )
 end
 
+local function getJumpExperienceValue()
+    local skill = tes3.getSkill(tes3.skill.acrobatics)
+    return skill.actions[1]
+end
+
 local function applyAthleticsProgress(mob)
-    mob:exerciseSkill(tes3.skill.athletics, 0.15)
+    mob:exerciseSkill(tes3.skill.athletics, getJumpExperienceValue())
 end
 
 local function applyAcrobaticsProgress(mob)
-    mob:exerciseSkill(tes3.skill.acrobatics, 0.15)
+    mob:exerciseSkill(tes3.skill.acrobatics, getJumpExperienceValue())
 end
 
 --
