@@ -121,7 +121,7 @@ local function getClimbingDestination()
     } do
         local rayhit = debugRayTest{
             widgetId = ("widget_%s"):format(i),
-            position = position + (direction * 80 * unitsForward * unitsForward * unitsForward),
+            position = position + (direction * 80 * unitsForward ^ 3),
             direction = DOWN,
             ignore = {tes3.player},
         }
