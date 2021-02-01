@@ -204,16 +204,12 @@ local function climbPlayer(destinationZ, speed)
     end
 end
 
-local function playClimbingStartedSound()
-    tes3.playSound{sound = 'corpDRAG', volume = 0.4, pitch = 0.8}
-end
-
-local function playClimbingFinishedSound()
-    tes3.playSound{sound = 'corpDRAG', volume = 0.1, pitch = 1.3}
-end
-
-local function playClimbingInterruptedSound()
-    tes3.playSound{sound = 'Item Armor Light Down', volume = 0.3, pitch = 1.3}
+local function playSound(t)
+    if t.delay == nil then
+        tes3.playSound(t)
+    else
+        timer.start{duration = t.delay, callback = function() tes3.playSound(t) end}
+    end
 end
 
 local function startClimbing(destination)
@@ -230,17 +226,17 @@ local function startClimbing(destination)
     }
 
     -- trigger climbing started sound after 0.1s
-    timer.start{duration = 0.1, callback = playClimbingStartedSound}
+    playSound{delay = 0.1, sound = 'corpDRAG', volume = 0.4, pitch = 0.8}
 
     -- trigger climbing finished sound after 0.7s
-    timer.start{duration = 0.7, callback = playClimbingFinishedSound}
+    playSound{delay = 0.7, sound = 'corpDRAG', volume = 0.1, pitch = 1.3}
 
     -- clear climbing state after 0.4s
     local penalty = 0.4
     local encumbRatio = mob.encumbrance.current / mob.encumbrance.base
     if (mob.fatigue.current <= 0) or (encumbRatio > 0.85) then
         destination = destination - mob.height * 0.8
-        timer.start{duration = 0.8, callback = playClimbingInterruptedSound}
+        playSound{delay = 0.8, sound = 'Item Armor Light Down', volume = 0.3, pitch = 1.3}
         penalty = 2.0
     end
     isClimbing = true
