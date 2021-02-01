@@ -25,6 +25,24 @@ local function getJumpFatigueCost()
     return jumpBase + encRatio * jumpMult
 end
 
+local function getCurrentVelocity(direction)
+    local mob = tes3.mobilePlayer
+    local velocity = mob.velocity:copy()
+    if velocity:length() == 0 then
+        -- velocity is zero when not jumping
+        -- so we calculate it from movespeed
+        if mob.isMovingForward then
+            velocity = direction * mob.moveSpeed
+        else
+            velocity = direction * (mob.isWalking and 100 or 175)
+        end
+        if mob.isMovingLeft or mob.isMovingRight then
+            velocity = velocity * 0.5
+        end
+    end
+    return velocity
+end
+
 local function applyClimbingFatigueCost()
     local skillCheckAverage = 0
     local skillCheckDivider = 0
@@ -109,17 +127,18 @@ local function playSound(t)
 end
 
 local function getClimbingDestination()
-    local position = tes3.player.position:copy()
-    local direction = tes3.getPlayerEyeVector()
-
-    local dirVelocity = 1 + 0.5 * math.min(1, tes3.mobilePlayer.moveSpeed/400)
-
     -- clear direction z component and re-normalize
     -- this creates a "forward" vector without tilt
+    local direction = tes3.getPlayerEyeVector()
     direction.z = 0
     direction:normalize()
 
+    -- get our forward velocity
+    local velocity = getCurrentVelocity(direction)
+    local forwardVelocity = direction * velocity:dot(direction)
+
     -- get the minimum obstacle height (pc waist)
+    local position = tes3.player.position:copy()
     local minHeight = position.z + tes3.mobilePlayer.height * 0.5
 
     -- we do raycasts from 200 units above player
@@ -129,17 +148,17 @@ local function getClimbingDestination()
     local destination = { z = -math.huge }
 
     -- doing N raycasts of varying amounts forward
-    for i, unitsForward in ipairs{
-        0.99 * dirVelocity,
-        0.86 * dirVelocity,
-        0.73 * dirVelocity,
-        0.60 * dirVelocity,
-        0.47 * dirVelocity,
-        0.33 -- first ray does not need to be changed
+    for i, step in ipairs{
+        0.990,
+        0.860,
+        0.730,
+        0.600,
+        0.470,
+        0.033 -- first ray does not need to be changed
     } do
         local rayhit = rayTest{
             widgetId = ("widget_%s"):format(i),
-            position = position + (direction * 80 * unitsForward ^ 3),
+            position = position + forwardVelocity * step,
             direction = DOWN,
             ignore = {tes3.player},
         }
