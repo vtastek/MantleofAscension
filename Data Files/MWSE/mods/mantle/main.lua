@@ -122,7 +122,7 @@ local function getClimbingDestination()
         0.73 * dirVelocity,
         0.60 * dirVelocity,
         0.47 * dirVelocity,
-        0.33
+        0.33 -- first ray does not need to be changed
     } do
         local rayhit = debugRayTest{
             widgetId = ("widget_%s"):format(i),
@@ -287,7 +287,7 @@ local function onClimbE(e)
     end
 
     if skillCheckDivider > 0 then
-        skillCheckAverage = skillCheckAverage / skillCheckDivider
+        skillCheckAverage = skillCheckAverage / skillCheckDivider -- only divide for the active skills
     end
 
     skillCheckAverage = math.max(0.1, 1 - skillCheckAverage / 100)
