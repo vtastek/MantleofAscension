@@ -151,22 +151,19 @@ local function getCeilingDistance()
     return math.huge
 end
 
-local function climbPlayer(currentZ, destinationZ, speed)
+local function climbPlayer(destinationZ, speed)
     -- some bias to prevent clipping through floors
     if getCeilingDistance() >= 20 then
+        local mob = tes3.mobilePlayer
+        local pos = mob.reference.position
+
         -- equalizing instead gets consistent results
-        local verticalClimb = currentZ + (destinationZ / 600 * speed) - tes3.player.position.z
-
+        local verticalClimb = pos.z + (destinationZ / 600 * speed) - pos.z
         if verticalClimb > 0 then
-        tes3.player.position.z = currentZ + (destinationZ / 600 * speed)
+            pos.z = pos.z + (destinationZ / 600 * speed)
+            mob.velocity = tes3vector3.new(0, 0, 0)
         end
-
-        -- tiny amount of velocity cancellation
-        -- not zero, it disables gravity impact
-        tes3.mobilePlayer.velocity = tes3vector3.new(0.01, 0.01, 0.01)
-        tes3.mobilePlayer.impulseVelocity = tes3vector3.new(0.01, 0.01, 0.01)
     end
-    return tes3.player.position.z
 end
 
 local function playClimbingStartedSound()
@@ -183,12 +180,11 @@ end
 
 local function startClimbing(destination, speed, penalty)
     -- trigger the actual climbing function
-    local current = tes3.player.position.z
     timer.start{
         duration=1/600,
         iterations=600/speed,
         callback=function()
-            current = climbPlayer(current, destination, speed)
+            climbPlayer(destination, speed)
         end,
     }
 
