@@ -23,7 +23,8 @@ local function checkCharGen()
         event.unregister("simulate", checkCharGen)
 
         local climbingDescription = (
-            "Climbing is good."
+            "Climbing is a skill checked whenever one attempts to scale a wall or a steep incline." ..
+             " Skilled inviduals can climb longer by getting exhausted later."
         )
         skillModuleClimb.registerSkill(
             "climbing",
@@ -148,16 +149,6 @@ local function getCeilingDistance()
     return math.huge
 end
 
-
-local function applyClimbingFatigueCost(mob)
-    local jumpBase = tes3.findGMST('fFatigueJumpBase').value
-    local jumpMult = tes3.findGMST('fFatigueJumpMult').value
-    local encumbRatio = mob.encumbrance.current / mob.encumbrance.base
-    local fatigueCost = jumpBase + encumbRatio * jumpMult
-    mob.fatigue.current = math.max(0, mob.fatigue.current - fatigueCost)
-end
-
-
 local function climbPlayer(currentZ, destinationZ, speed)
     -- some bias to prevent clipping through floors
     if getCeilingDistance() >= 20 then
@@ -186,7 +177,11 @@ local function playClimbingFinishedSound()
     tes3.playSound{sound = 'corpDRAG', volume = 0.1, pitch = 1.3}
 end
 
-local function startClimbing(destination, speed)
+local function playClimbingInterruptedSound()
+    tes3.playSound{sound = 'Item Armor Light Down', volume = 0.3, pitch = 1.3}
+end
+
+local function startClimbing(destination, speed, penalty)
     -- trigger the actual climbing function
     local current = tes3.player.position.z
     timer.start{
@@ -202,7 +197,7 @@ local function startClimbing(destination, speed)
     -- trigger climbing finished sound after 0.7s
     timer.start{duration = 0.7, callback = playClimbingFinishedSound}
     -- clear climbing state after 0.4s
-    timer.start{duration = 0.4, callback = function() isClimbing = false end}
+    timer.start{duration = penalty, callback = function() isClimbing = false end}
 
     --mobilePlayer:exerciseSkill(tes3.skill.acrobatics, 1)
 end
@@ -269,9 +264,49 @@ local function onClimbE(e)
     -- how much to move upwards
     -- bias for player bounding box
     destination = (destination.z - playerMob.position.z) + 70
-    startClimbing(destination, speed)
 
-    applyClimbingFatigueCost(tes3.mobilePlayer)
+    local jumpBase = tes3.findGMST('fFatigueJumpBase').value
+    local jumpMult = tes3.findGMST('fFatigueJumpMult').value
+    local encumbRatio = playerMob.encumbrance.current / playerMob.encumbrance.base
+
+    local skillCheckAverage = 0
+    local skillCheckDivider = 0
+
+    if config.trainAcrobatics then
+        skillCheckAverage = tes3.mobilePlayer:getSkillValue(tes3.skill.acrobatics)
+        skillCheckDivider = 1
+    end
+    if config.trainAthletics then
+        skillCheckAverage = skillCheckAverage + tes3.mobilePlayer:getSkillValue(tes3.skill.athletics)
+        skillCheckDivider = skillCheckDivider + 1
+    end
+    if skillModuleClimb ~= nil and config.trainClimbing then
+        skillCheckAverage = skillCheckAverage + skillModuleClimb.getSkill("climbing").value
+        skillCheckDivider = skillCheckDivider + 1
+    end
+
+    if skillCheckDivider > 0 then
+        skillCheckAverage = skillCheckAverage / skillCheckDivider
+    end
+
+    skillCheckAverage = math.max(0.1, 1 - skillCheckAverage / 100)
+
+    local fatigueCost = jumpBase + encumbRatio * jumpMult
+    fatigueCost = fatigueCost * 2 * skillCheckAverage
+
+    playerMob.fatigue.current = math.max(0, playerMob.fatigue.current - fatigueCost)
+
+    local penalty = 0.4
+    if tes3.mobilePlayer.fatigue.current < fatigueCost or encumbRatio > 0.85 then
+        destination = destination - playerMob.height * 0.8
+        timer.start{duration = 0.8, callback = playClimbingInterruptedSound}
+        penalty = 2.0
+    end
+
+    isClimbing = true
+    startClimbing(destination, speed, penalty)
+
+    -- applyClimbingFatigueCost(tes3.mobilePlayer)
 
     if skillModuleClimb ~= nil and config.trainClimbing then
         local climbProgressHeight = math.max(0, tes3.player.position.z)
