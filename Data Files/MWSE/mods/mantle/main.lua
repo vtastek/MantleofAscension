@@ -136,32 +136,39 @@ local function getClimbingDestination()
 
     -- get the minimum obstacle height (pc waist)
     local position = tes3.player.position:copy()
-    local minHeight = position.z + tes3.mobilePlayer.height * 0.5
+    local minHeight = tes3.mobilePlayer.height * 0.5
+
+    -- variable for holding the final destination
+    local destination = { z = position.z }
 
     -- we do raycasts from 200 units above player
     position.z = position.z + 200
 
-    -- variable for holding the final destination
-    local destination = { z = -math.huge }
-
     -- doing N raycasts of varying amounts forward
+    local isStairs = true
     local forwardVelocity = getForwardVelocity()
     for i=1, 6 do
         local rayhit = rayTest{
-            widgetId = ("widget_%s"):format(i),
-            position = position + forwardVelocity * (i/6)^3,
+            widgetId = "widget_" .. i,
+            position = position + forwardVelocity * (i * 0.1),
             direction = DOWN,
             ignore = {tes3.player},
         }
         if rayhit then
             -- only keep the intersection with highest z
-            -- and only if it is higher than the minimum
-            if (rayhit.intersection.z > destination.z
-                and rayhit.intersection.z > minHeight)
-            then
+            local dt = rayhit.intersection.z - destination.z
+            if dt > 0 then
                 destination = rayhit.intersection:copy()
+                if dt > minHeight then
+                    isStairs = false
+                end
             end
         end
+    end
+
+    if isStairs then
+        tes3.messageBox("STAIRS DETECTED", isStairs)
+        return
     end
 
     -- if x/y are undefined then all raycasts failed
