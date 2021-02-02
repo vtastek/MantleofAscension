@@ -25,30 +25,6 @@ local function getJumpFatigueCost()
     return jumpBase + encRatio * jumpMult
 end
 
-local function getForwardVelocity()
-    -- clear direction z component and re-normalize
-    -- this creates a "forward" vector without tilt
-    local direction = tes3.getPlayerEyeVector()
-    direction.z = 0
-    direction:normalize()
-
-    local mob = tes3.mobilePlayer
-    local velocity = mob.velocity
-
-    -- velocity is zero when not jumping
-    -- so we calculate it from movespeed
-    if not mob.isJumping then
-        if mob.isMovingForward then
-            velocity = direction * mob.moveSpeed
-            if mob.isMovingLeft or mob.isMovingRight then
-                velocity = velocity * 0.5
-            end
-        end
-    end
-
-    return direction * math.max(100, velocity:dot(direction))
-end
-
 local function applyClimbingFatigueCost()
     local skillCheckAverage = 0
     local skillCheckDivider = 0
