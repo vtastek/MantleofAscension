@@ -133,15 +133,11 @@ local function playSound(t)
 end
 
 local function getClimbingDestination()
-    -- get the minimum obstacle height (pc waist)
-    local position = tes3.player.position:copy()
-    local minHeight = tes3.mobilePlayer.height * 0.5
-
     -- variable for holding the final destination
-    local destination = { z = position.z }
+    local destination = tes3.player.position:copy()
 
     -- we do raycasts from 200 units above player
-    position.z = position.z + 200
+    local rayPosition = destination + (UP * 200)
 
     -- clear direction z component and re-normalize
     -- this creates a "forward" vector without tilt
@@ -149,34 +145,33 @@ local function getClimbingDestination()
     direction.z = 0
     direction:normalize()
 
+    -- we'll ignore destinations that are pathable
+    local isPathable = true
+
     -- doing N raycasts of varying amounts forward
-    local isStairs = true
     for i=2, 10 do
         local rayhit = rayTest{
             widgetId = "widget_" .. i,
-            position = position + direction * (i * 50/3),
+            position = rayPosition + direction * (i * 50/3),
             direction = DOWN,
             ignore = {tes3.player},
         }
         if rayhit then
             -- only keep the intersection with highest z
-            local dt = rayhit.intersection.z - destination.z
-            if dt > 0 then
-                destination = rayhit.intersection:copy()
-                if dt > minHeight then
-                    isStairs = false
+            local dt = rayhit.intersection - destination
+            if dt.z > 0 then
+                -- if angle is > 45 then is not pathable
+                local angle = math.acos(dt:normalized():dot(direction))
+                tes3ui.log("ray %s angle is %s", i-2, math.deg(angle))
+                if angle > math.rad(45) then
+                    isPathable = false
                 end
+                destination = rayhit.intersection:copy()
             end
         end
     end
 
-    if isStairs then
-        tes3.messageBox("STAIRS DETECTED", isStairs)
-        return
-    end
-
-    -- if x/y are undefined then all raycasts failed
-    if destination.x and destination.y then
+    if not isPathable then
         return destination
     end
 end
