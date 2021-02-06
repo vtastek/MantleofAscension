@@ -53,8 +53,8 @@ local function getEncumbRatio(mob)
 end
 
 local function getJumpFatigueCost()
-    local jumpBase = tes3.findGMST('fFatigueJumpBase').value
-    local jumpMult = tes3.findGMST('fFatigueJumpMult').value
+    local jumpBase = tes3.findGMST(tes3.gmst.fFatigueJumpBase).value
+    local jumpMult = tes3.findGMST(tes3.gmst.fFatigueJumpMult).value
     local encRatio = getEncumbRatio(tes3.mobilePlayer)
     return jumpBase + encRatio * jumpMult
 end
