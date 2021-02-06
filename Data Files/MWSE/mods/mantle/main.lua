@@ -39,7 +39,9 @@ local function applyAthleticsProgress()
 end
 
 local function applyClimbingProgress(value)
-    skillModuleClimb.incrementSkill("climbing", {progress = value})
+    if config.trainClimbing and skillModuleClimb then
+        skillModuleClimb.incrementSkill("climbing", {progress = value})
+    end
 end
 
 --
