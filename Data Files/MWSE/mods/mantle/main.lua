@@ -214,15 +214,15 @@ local function startClimbing(destinationZ)
     if (mob.fatigue.current <= 0) or getEncumbRatio(mob) >= 0.85 then
         climbDuration = 2.0
         destinationZ = destinationZ - mob.height * 0.8
-        playSound{delay = 0.8, sound = 'Item Armor Light Down', volume = 0.5, pitch = 1.3}
+        playSound{sound = 'Item Armor Light Down', volume = 0.5, pitch = 1.3, delay = 0.8}
     end
-
-    -- set climbing state until finish
-    isClimbing = true
-    timer.start{duration = climbDuration, callback = function() isClimbing = false end}
 
     -- avoid sending us through the ceiling
     destinationZ = math.min(destinationZ, getCeilingDistance() - mob.height)
+
+    -- set climbing state until it finished
+    isClimbing = true
+    timer.start{duration = climbDuration, callback = function() isClimbing = false end}
 
     -- trigger the actual climbing function
     local speed = (mob.moveSpeed < 100) and 1.5 or 2.0
@@ -235,10 +235,10 @@ local function startClimbing(destinationZ)
     }
 
     -- trigger climbing started sound after 0.1s
-    playSound{delay = 0.1, sound = 'corpDRAG', volume = 0.6, pitch = 0.8}
+    playSound{sound = 'corpDRAG', volume = 0.6, pitch = 0.8, delay = 0.1}
 
     -- trigger climbing finished sound after 0.7s
-    playSound{delay = 0.7, sound = 'corpDRAG', volume = 0.3, pitch = 1.3}
+    playSound{sound = 'corpDRAG', volume = 0.3, pitch = 1.3, delay = 0.7}
 end
 
 local function attemptClimbing()
