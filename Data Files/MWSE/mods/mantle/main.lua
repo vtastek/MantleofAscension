@@ -82,10 +82,11 @@ local function applyClimbingFatigueCost()
         skillCheckAverage = skillCheckAverage / skillCheckDivider -- only divide for the active skills
     end
 
-    skillCheckAverage = math.max(0.1, 1 - skillCheckAverage / 100)
-    local climbCost = getJumpFatigueCost() * 2 * skillCheckAverage
-
-    tes3.modStatistic{reference = tes3.player, name = "fatigue", current = (-climbCost), limit = true}
+    local climbCost = math.min(
+        tes3.mobilePlayer.fatigue.current,
+        getJumpFatigueCost() * 2 * math.max(0.1, 1 - skillCheckAverage / 100)
+    )
+    tes3.modStatistic{reference = tes3.player, name = "fatigue", current = -climbCost}
 end
 
 --
@@ -191,7 +192,6 @@ local function getClimbingDestination()
 end
 
 local function climbPlayer(destinationZ, speed)
-    -- some bias to prevent clipping through floors
     if getCeilingDistance() < 20 then return end
 
     local mob = tes3.mobilePlayer
