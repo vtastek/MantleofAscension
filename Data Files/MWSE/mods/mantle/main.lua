@@ -54,12 +54,16 @@ local function applyClimbingFatigueCost()
     tes3.modStatistic{reference = tes3.player, name = "fatigue", current = (-climbCost), limit = true}
 end
 
-local function applyAcrobaticsProgress(mob)
-    mob:exerciseSkill(tes3.skill.acrobatics, getJumpExperienceValue())
+local function applyAcrobaticsProgress()
+    if config.trainAcrobatics then
+        mob:exerciseSkill(tes3.skill.acrobatics, getJumpExperienceValue())
+    end
 end
 
-local function applyAthleticsProgress(mob)
-    mob:exerciseSkill(tes3.skill.athletics, getJumpExperienceValue())
+local function applyAthleticsProgress()
+    if config.trainAthletics then
+        mob:exerciseSkill(tes3.skill.athletics, getJumpExperienceValue())
+    end
 end
 
 local function applyClimbingProgress(value)
@@ -154,9 +158,9 @@ end
 
 local function getCeilingDistance()
     local eyePos = tes3.getPlayerEyePosition()
-    local result = tes3.rayTest{position = eyePos, direction = UP, ignore = {tes3.player}}
-    if result then
-        return result.distance
+    local rayhit = tes3.rayTest{position = eyePos, direction = UP, ignore = {tes3.player}}
+    if rayhit then
+        return rayhit.distance
     end
     return math.huge
 end
@@ -215,10 +219,8 @@ local function onKeyDownJump(e)
         return
     elseif mob.isFlying then
         return
-    elseif tes3ui.menuMode() then
+    elseif config.disableThirdPerson and tes3.is3rdPerson() then
         return
-    elseif tes3.is3rdPerson() and config.disableThirdPerson then
-         return
     end
 
     -- prevent climbing while downed/dying/etc
@@ -256,9 +258,6 @@ local function onKeyDownJump(e)
         return
     end
 
-    --
-    -- applyClimbingFatigueCost()
-
     -- how much to move upwards
     -- bias for player bounding box
     destination = (destination.z - mob.position.z) + 70
@@ -272,20 +271,23 @@ local function onKeyDownJump(e)
         applyClimbingProgress(climbProgressHeight)
     end
 
-    if config.trainAcrobatics then
-        applyAcrobaticsProgress(tes3.mobilePlayer)
-    end
-    if config.trainAthletics then
-       applyAthleticsProgress(tes3.mobilePlayer)
-    end
+    --
+    applyAcrobaticsProgress()
+    applyAthleticsProgress()
+
+    --
+    -- applyClimbingFatigueCost()
+
+end
+
+-- optimized key detection, cache input map entry after first use for fast comparison
+local isJumpKey = function(keyCode)
+    local key = tes3.worldController.inputController.inputMaps[tes3.keybind.jump + 1]
+    isJumpKey = function(keyCode) return keyCode == key.code end
+    return isJumpKey(keyCode)
 end
 
 -- events
-local function registerMCM(e)
-    require("mantle.mcm")
-end
-event.register("modConfigReady", registerMCM)
-
 local function onSkillsReady()
     local charGen = tes3.findGlobal("CharGenState")
     local function checkCharGen()
@@ -311,14 +313,16 @@ local function onSkillsReady()
 end
 event.register("OtherSkills:Ready", onSkillsReady)
 
-local jumpKey
-event.register("initialized", function()
-    jumpKey = tes3.worldController.inputController.inputMaps[tes3.keybind.jump + 1]
-end)
-
 local function onKeyDown(e)
-    if e.pressed and (e.keyCode == jumpKey.code) then
-        onKeyDownJump()
+    if not tes3ui.menuMode() then
+        if isJumpKey(e.keyCode) then
+            onKeyDownJump()
+        end
     end
 end
 event.register('keyDown', onKeyDown)
+
+local function registerMCM(e)
+    require("mantle.mcm")
+end
+event.register("modConfigReady", registerMCM)
