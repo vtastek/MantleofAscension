@@ -191,14 +191,25 @@ local function getClimbingDestination()
     return destination
 end
 
-local function climbPlayer(destinationZ, speed)
+local function climbPlayer(destinationZ, speed, iterationCount)
     if getCeilingDistance() < 20 then return end
 
     local mob = tes3.mobilePlayer
     local pos = mob.reference.position
 
+    -- animation as function
+    -- https://www.desmos.com/calculator/ghhhlajgjc
+    local curvedSpeed = 2
+    local iterationCountNormalized = iterationCount/48
+    local sina = 1.2 * math.sin((math.max(3.5, iterationCountNormalized * 2.1) + 104) * 0.15 - 10)
+    local sinb = 4.1 * math.cos((math.min(3.5, iterationCountNormalized * 0.63) + 1.15) * 1.34 - 3)
+
+    if speed == 1.27 then
+       curvedSpeed = math.max(0, 1.1 * (math.max(0,math.pow(sina,3)) + math.max(0, sinb) - 0.54))
+    end
+
     -- equalizing instead gets consistent results
-    local verticalClimb = destinationZ / 600 * speed
+    local verticalClimb = destinationZ / 600 * curvedSpeed
     if verticalClimb > 0 then
         local previous = pos:copy()
         pos.z = pos.z + verticalClimb
@@ -214,7 +225,7 @@ local function startClimbing(destinationZ)
     if (mob.fatigue.current <= 0) or getEncumbRatio(mob) >= 0.85 then
         climbDuration = 2.0
         destinationZ = destinationZ - mob.height * 0.8
-        playSound{sound = 'Item Armor Light Down', volume = 0.5, pitch = 1.3, delay = 0.8}
+        playSound{sound = 'Item Armor Light Down', volume = 1.0, pitch = 1.3, delay = 0.2}
     end
 
     -- avoid sending us through the ceiling
@@ -225,12 +236,15 @@ local function startClimbing(destinationZ)
     timer.start{duration = climbDuration, callback = function() isClimbing = false end}
 
     -- trigger the actual climbing function
-    local speed = (mob.moveSpeed < 100) and 1.5 or 2.0
+    local speed = (mob.moveSpeed < 100) and 1.27 or 2.0
+    local iterationCount = 0
+
     timer.start{
         duration = 1/600,
         iterations = 600/speed,
         callback = function()
-            climbPlayer(destinationZ, speed)
+            climbPlayer(destinationZ, speed, iterationCount)
+            iterationCount = iterationCount + 1
         end,
     }
 
