@@ -192,6 +192,7 @@ local function getClimbingDestination()
 end
 
 local function climbPlayer(destinationZ, speed, iterationCount)
+    -- avoid sending us through the ceiling
     if getCeilingDistance() < 20 then return end
 
     local mob = tes3.mobilePlayer
@@ -227,9 +228,6 @@ local function startClimbing(destinationZ)
         destinationZ = destinationZ - mob.height * 0.8
         playSound{sound = 'Item Armor Light Down', volume = 1.0, pitch = 1.3, delay = 0.2}
     end
-
-    -- avoid sending us through the ceiling
-    destinationZ = math.min(destinationZ, getCeilingDistance() - mob.height)
 
     -- set climbing state until it finished
     isClimbing = true
