@@ -201,12 +201,12 @@ local function climbPlayer(destinationZ, speed, iterationCount)
     -- animation as function
     -- https://www.desmos.com/calculator/ghhhlajgjc
     local curvedSpeed = 2
-    local iterationCountNormalized = iterationCount/48
+    local iterationCountNormalized = iterationCount/120
     local sina = 1.2 * math.sin((math.max(3.5, iterationCountNormalized * 2.1) + 104) * 0.15 - 10)
     local sinb = 4.1 * math.cos((math.min(3.5, iterationCountNormalized * 0.63) + 1.15) * 1.34 - 3)
 
-    if speed == 1.27 then
-       curvedSpeed = math.max(0, 1.1 * (math.max(0,math.pow(sina,3)) + math.max(0, sinb) - 0.54))
+    if speed == 0.5 then
+       curvedSpeed = math.max(0, 0.436 * (math.max(0,math.pow(sina,3)) + math.max(0, sinb) - 0.54))
     end
 
     -- equalizing instead gets consistent results
@@ -237,7 +237,7 @@ local function startClimbing(destinationZ)
     timer.start{duration = climbDuration, callback = function() isClimbing = false end}
 
     -- trigger the actual climbing function
-    local speed = (mob.moveSpeed < 100) and 1.27 or 2.0
+    local speed = (mob.moveSpeed < 100) and 0.5 or 2.0
     local iterationCount = 0
 
     timer.start{
