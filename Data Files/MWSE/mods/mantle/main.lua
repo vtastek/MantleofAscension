@@ -221,6 +221,9 @@ end
 local function startClimbing(destinationZ)
     local mob = tes3.mobilePlayer
 
+    -- disable the swimming physics systems
+    mob.isSwimming = false
+
     -- player encumbrance/fatigue penalties
     local climbDuration = 0.4
     if (mob.fatigue.current <= 0) or getEncumbRatio(mob) >= 0.85 then
