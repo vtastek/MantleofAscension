@@ -152,7 +152,6 @@ end
 
 local function getClimbingDestination()
     local position = tes3.player.position
-    local destination = position:copy()
 
     -- we will raycasts from 200 units above player
     local rayPosition = destination + (UP * 200)
@@ -166,6 +165,7 @@ local function getClimbingDestination()
     local waistHeight = tes3.mobilePlayer.height * 0.5
 
     -- tracking angle to prevent climbing up stairs
+    local destination = nil
     local destinationAngle = MIN_ANGLE
 
     -- raycast down from increasing forward offsets
@@ -188,9 +188,7 @@ local function getClimbingDestination()
         end
     end
 
-    if destinationAngle > MIN_ANGLE then
-        return destination
-    end
+    return destination
 end
 
 local function climbPlayer(destinationZ, speed, iterationCount)
