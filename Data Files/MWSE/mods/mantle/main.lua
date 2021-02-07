@@ -17,6 +17,7 @@ local CLIMB_RAYCAST_COUNT = 15
 local CLIMB_MIN_DISTANCE = 50/3
 local UP = tes3vector3.new(0, 0, 1)
 local DOWN = tes3vector3.new(0, 0, -1)
+local MIN_ANGLE = math.rad(45)
 
 --
 -- Skill Progress
@@ -150,7 +151,8 @@ local function getCeilingDistance()
 end
 
 local function getClimbingDestination()
-    local destination = tes3.player.position:copy()
+    local position = tes3.player.position
+    local destination = position:copy()
 
     -- we will raycasts from 200 units above player
     local rayPosition = destination + (UP * 200)
@@ -159,6 +161,12 @@ local function getClimbingDestination()
     local forward = tes3.getPlayerEyeVector()
     forward.z = 0
     forward:normalize()
+
+    -- require destination to be above player waist
+    local waistHeight = tes3.mobilePlayer.height * 0.5
+
+    -- tracking angle to prevent climbing up stairs
+    local destinationAngle = MIN_ANGLE
 
     -- raycast down from increasing forward offsets
     for i=1, 8 do
@@ -169,26 +177,20 @@ local function getClimbingDestination()
             ignore = {tes3.player},
         }
         if rayhit then
-            -- only keep the intersection highest z
-            if rayhit.intersection.z > destination.z then
-                destination = rayhit.intersection:copy()
+            local vec = rayhit.intersection - position
+            if vec.z >= waistHeight then
+                local angle = math.acos(vec:normalized():dot(forward))
+                if angle > destinationAngle then
+                    destinationAngle = angle
+                    destination = rayhit.intersection:copy()
+                end
             end
         end
     end
 
-    -- ignore if destination is below player waist
-    local vec = destination - tes3.player.position
-    if vec.z < tes3.mobilePlayer.height * 0.5 then
-        return
+    if destinationAngle > MIN_ANGLE then
+        return destination
     end
-
-    -- minimum angle to prevent climbing up stairs
-    local angle = math.acos(vec:normalized():dot(forward))
-    if angle <= math.rad(45) then
-        return
-    end
-
-    return destination
 end
 
 local function climbPlayer(destinationZ, speed, iterationCount)
