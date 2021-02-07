@@ -154,7 +154,7 @@ local function getClimbingDestination()
     local position = tes3.player.position
 
     -- we will raycasts from 200 units above player
-    local rayPosition = destination + (UP * 200)
+    local rayPosition = position + (UP * 200)
 
     -- build forward vector without any upward tilt
     local forward = tes3.getPlayerEyeVector()
