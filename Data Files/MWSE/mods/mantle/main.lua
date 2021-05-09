@@ -144,9 +144,9 @@ end
 -- Climbing
 --
 
-local function getCeilingDistance()
-    local eyePos = tes3.getPlayerEyePosition()
-    local rayhit = tes3.rayTest{position = eyePos, direction = UP, ignore = {tes3.player}}
+local function getCeilingDistance(pos)
+    pos = pos or tes3.getPlayerEyePosition()
+    local rayhit = tes3.rayTest{position = pos, direction = UP, ignore = {tes3.player}}
     return rayhit and rayhit.distance or math.huge
 end
 
@@ -188,7 +188,9 @@ local function getClimbingDestination()
         end
     end
 
-    return destination
+    if destination and getCeilingDistance(destination) >= 64 then
+        return destination
+    end
 end
 
 local function climbPlayer(destinationZ, speed)
@@ -250,7 +252,7 @@ local function attemptClimbing()
 
     -- how much to move upwards
     -- bias for player bounding box
-    destination = (destination.z - tes3.player.position.z) + 70
+    destination = (destination.z - tes3.player.position.z) + 64
     startClimbing(destination)
 
     if skillModuleClimb ~= nil and config.trainClimbing then
