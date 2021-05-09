@@ -269,8 +269,7 @@ local function attemptClimbing()
     return true
 end
 
--- luacheck: ignore 212/e
-local function onKeyDownJump(e)
+local function onKeyDownJump()
     local mob = tes3.mobilePlayer
 
     if tes3ui.menuMode() then
@@ -357,7 +356,7 @@ local function onSkillsReady()
 end
 event.register("OtherSkills:Ready", onSkillsReady)
 
-local function onModConfigReady(e)
+local function onModConfigReady()
     require("mantle.mcm")
 end
 event.register("modConfigReady", onModConfigReady)
