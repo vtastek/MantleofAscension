@@ -319,22 +319,16 @@ local function onKeyDownJump()
     climbTimer.callback()
 end
 
-local isJumpKey = function(keyCode)
-    local key = tes3.worldController.inputController.inputMaps[tes3.keybind.jump + 1]
-    isJumpKey = function(keyCode) return keyCode == key.code end
-    return isJumpKey(keyCode)
-end
-
 --
 -- Events
 --
 
-local function onKeyDown(e)
-    if isJumpKey(e.keyCode) then
+local function onKeybindTest(e)
+    if e.result and (e.transition == tes3.keyTransition.down) then
         onKeyDownJump()
     end
 end
-event.register('keyDown', onKeyDown)
+event.register("keybindTested", onKeybindTest, { filter = tes3.keybind.jump })
 
 local function onSkillsReady()
     local charGen = tes3.findGlobal("CharGenState")
