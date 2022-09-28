@@ -144,10 +144,9 @@ end
 -- Climbing
 --
 
-local function getCeilingDistance(pos)
-    pos = pos or tes3.getPlayerEyePosition()
-    local rayhit = tes3.rayTest{position = pos, direction = UP, ignore = {tes3.player}}
-    return rayhit and rayhit.distance or math.huge
+local function getCeilingDistance(t)
+    local rayhit = tes3.rayTest{position = t.position, direction = UP, ignore = {tes3.player}, maxDist=t.maxDist}
+    return rayhit and rayhit.distance
 end
 
 local function getClimbingDestination()
@@ -175,6 +174,7 @@ local function getClimbingDestination()
             position = rayPosition + forward * (CLIMB_MIN_DISTANCE * i),
             direction = DOWN,
             ignore = {tes3.player},
+            maxDist = 200,
         }
         if rayhit then
             local vec = rayhit.intersection - position
@@ -188,14 +188,16 @@ local function getClimbingDestination()
         end
     end
 
-    if destination and getCeilingDistance(destination) >= 64 then
+    if destination and getCeilingDistance{position=destination, maxDist=64} then
         return destination
     end
 end
 
 local function climbPlayer(destinationZ, speed)
     -- avoid sending us through the ceiling
-    if getCeilingDistance() < 20 then return end
+    if getCeilingDistance{position=tes3.getPlayerEyePosition(), maxDist=20} then
+        return
+    end
 
     local mob = tes3.mobilePlayer
     local pos = mob.reference.position
