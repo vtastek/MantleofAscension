@@ -323,12 +323,16 @@ end
 -- Events
 --
 
-local function onKeybindTest(e)
-    if e.result and (e.transition == tes3.keyTransition.down) then
+local inputMaps
+local function onKeyDown(e)
+    if inputMaps == nil then
+        inputMaps = tes3.worldController.inputController.inputMaps
+    end
+    if e.keyCode == inputMaps[tes3.keybind.jump + 1].code then
         onKeyDownJump()
     end
 end
-event.register("keybindTested", onKeybindTest, { filter = tes3.keybind.jump })
+event.register("keyDown", onKeyDown)
 
 local function onSkillsReady()
     local charGen = tes3.findGlobal("CharGenState")
