@@ -259,7 +259,6 @@ local function attemptClimbing()
         local climbProgressHeight = math.max(0, tes3.player.position.z)
         climbProgressHeight = math.min(climbProgressHeight, 10000)
         climbProgressHeight = math.remap(climbProgressHeight, 0, 10000, 1, 5)
-        -- mwse.log(climbProgressHeight)
         applyClimbingProgress(climbProgressHeight)
     end
 
@@ -301,7 +300,6 @@ local function onKeyDownJump()
     if fastfall > 0 then
         if velocity.z < -10 * (-1.5 * fastfall + 250) then
             applyClimbingProgress(5)
-            -- mwse.log("too fast")
             return
         end
     end
