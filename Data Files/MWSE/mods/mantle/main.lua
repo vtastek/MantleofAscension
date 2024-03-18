@@ -212,16 +212,16 @@ local function getClimbingDestination(positionCache)
                 direction = DOWN,
                 ignore = {tes3.player},
             }
-        end
-        if rayhit then
-            local vec = rayhit.intersection - position
-            if vec.z >= waistHeight then
-                local angle = math.acos(vec:normalized():dot(forward))
-                if angle > destinationAngle then
-                    destinationAngle = angle
-                    destination = rayhit.intersection:copy()
+            if rayhit then
+                local vec = rayhit.intersection - position
+                if vec.z >= waistHeight then
+                    local angle = math.acos(vec:normalized():dot(forward))
+                    if angle > destinationAngle then
+                        destinationAngle = angle
+                        destination = rayhit.intersection:copy()
+                    end
+                    maxVecZ = math.max(maxVecZ, -vec.z)
                 end
-                maxVecZ = math.max(maxVecZ, -vec.z)
             end
         end
     end
