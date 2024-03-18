@@ -160,7 +160,32 @@ local function getCeilingDistance(pos)
     return rayhit and rayhit.distance or math.huge
 end
 
-local function getClimbingDestination()
+local function checkNewPositions(positionCache, newPosition)
+    -- Ensure the position cache exists and has at least 16 entries
+    if not positionCache or #positionCache < 16 then
+        return true -- Treat any new position as valid if cache is not full
+    end
+
+    -- Check if the new position is within 5 units of any cached position
+    for _, cachedPos in ipairs(positionCache) do
+        local distance = (newPosition - cachedPos):length()
+        if distance < 1 then
+            return false -- Position is too close to a cached position
+        end
+    end
+
+    -- Add the new position to the cache
+    table.insert(positionCache, newPosition)
+
+    -- Remove the oldest position if the cache exceeds 16 entries
+    if #positionCache > 16 then
+        table.remove(positionCache, 1)
+    end
+
+    return true -- New position is valid
+end
+
+local function getClimbingDestination(positionCache)
     local position = tes3.player.position
 
     -- we will raycasts from 200 units above player
@@ -179,14 +204,19 @@ local function getClimbingDestination()
     local destinationAngle = MIN_ANGLE
     local maxVecZ = -math.huge -- Initialize with negative infinity
 
-    -- raycast down from increasing forward offsets
-    for i=1, 8 do
-        local rayhit = rayTest{
-            widgetId = "widget_" .. i,
-            position = rayPosition + forward * (CLIMB_MIN_DISTANCE * i),
-            direction = DOWN,
-            ignore = {tes3.player},
-        }
+    -- raycast down from increasing forward offsets(from farthest to nearest)
+    for i=1, 8, -1 do
+
+        local startPos = rayPosition + forward * (CLIMB_MIN_DISTANCE * i)
+        local newPosition = checkNewPositions(positionCache, startPos) -- cache and check previous 8 positions
+        if newPosition then
+            local rayhit = rayTest{
+                widgetId = "widget_" .. i,
+                position = startPos,
+                direction = DOWN,
+                ignore = {tes3.player},
+            }
+        end
         if rayhit then
             local vec = rayhit.intersection - position
             if vec.z >= waistHeight then
@@ -225,7 +255,7 @@ end
 local function doneClimbing(maxVecZ)
     isClimbing = false 
     -- tes3.messageBox(maxVecZ)
-    -- local jumpXP = tes3.getSkill(tes3.skill.acrobatics).actions[1]
+    local jumpXP = tes3.getSkill(tes3.skill.acrobatics).actions[1]
     
     local maxDrop = -maxVecZ
 
@@ -285,8 +315,8 @@ local function startClimbing(deltaZ, maxVecZ)
     playSound{sound = 'corpDRAG', volume = 0.3, pitch = 1.3, delay = 0.7}
 end
 
-local function attemptClimbing()
-    local destination, maxVecZ = getClimbingDestination()
+local function attemptClimbing(positionCache)
+    local destination, maxVecZ = getClimbingDestination(positionCache)
     if destination == nil or maxVecZ == nil then
         return
     end
@@ -338,12 +368,14 @@ local function onKeyDownJump()
         end
     end
 
+    local positionCache = {}
+
     local climbTimer
     climbTimer = timer.start{
         duration = CLIMB_TIMING_WINDOW / CLIMB_RAYCAST_COUNT,
         iterations = CLIMB_RAYCAST_COUNT,
         callback = function()
-            if attemptClimbing() then
+            if attemptClimbing(positionCache) then
                 climbTimer:cancel()
             end
         end
