@@ -161,14 +161,10 @@ local function getCeilingDistance(pos)
 end
 
 local function checkNewPositions(positionCache, newPosition)
-    -- Ensure the position cache exists and has at least 16 entries
-    if not positionCache or #positionCache < 16 then
-        return true -- Treat any new position as valid if cache is not full
-    end
-
+    
     -- Check if the new position is within 5 units of any cached position
     for _, cachedPos in ipairs(positionCache) do
-        local distance = (newPosition - cachedPos):length()
+        local distance = newPosition :distance(cachedPos)
         if distance < 1 then
             return false -- Position is too close to a cached position
         end
@@ -177,8 +173,8 @@ local function checkNewPositions(positionCache, newPosition)
     -- Add the new position to the cache
     table.insert(positionCache, newPosition)
 
-    -- Remove the oldest position if the cache exceeds 16 entries
-    if #positionCache > 16 then
+    -- Remove the oldest position if the cache exceeds 8 entries
+    if #positionCache > 8 then
         table.remove(positionCache, 1)
     end
 
@@ -208,7 +204,7 @@ local function getClimbingDestination(positionCache)
     for i=1, 8, -1 do
 
         local startPos = rayPosition + forward * (CLIMB_MIN_DISTANCE * i)
-        local newPosition = checkNewPositions(positionCache, startPos) -- cache and check previous 8 positions
+        local newPosition = true -- checkNewPositions(positionCache, startPos) -- cache and check previous 8 positions
         if newPosition then
             local rayhit = rayTest{
                 widgetId = "widget_" .. i,
