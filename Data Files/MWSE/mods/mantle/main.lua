@@ -3,12 +3,17 @@
 -- Adds climbing to Morrowind
 
 
-local log = require("logging.logger").new{name="Mantle of Ascension"}
+local logger = require("logging.logger")
+local log = logger.new{
+    name = "Mantle of Ascension",
+    logLevel = "TRACE",
+    logToConsole = true,
+    includeTimestamp = true,
+}
 
 local jumpKeyCode -- current jump key
 
 
--- log:setLogLevel("DEBUG")
 
 -- modules
 local config = require("mantle.config")
@@ -42,7 +47,7 @@ local UP = tes3vector3.new(0, 0, 1)
 local DOWN = tes3vector3.new(0, 0, -1)
 local MIN_ANGLE = math.rad(45)
 
-local MAX_XP_CLIMB_DIST = 150
+local MAX_XP_CLIMB_DIST = 10000
 
 --
 -- Skill Progress
@@ -172,6 +177,7 @@ local function getClimbingDestination()
     -- tracking angle to prevent climbing up stairs
     local destination = nil
     local destinationAngle = MIN_ANGLE
+    local maxVecZ = -math.huge -- Initialize with negative infinity
 
     -- raycast down from increasing forward offsets
     for i=1, 8 do
@@ -189,12 +195,13 @@ local function getClimbingDestination()
                     destinationAngle = angle
                     destination = rayhit.intersection:copy()
                 end
+                maxVecZ = math.max(maxVecZ, -vec.z)
             end
         end
     end
 
     if destination and getCeilingDistance(destination) >= 64 then
-        return destination
+        return destination, maxVecZ
     end
 end
 
@@ -215,18 +222,18 @@ local function climbPlayer(deltaZ, speed)
 end
 
 
-local function doneClimbing(initialZPos)
+local function doneClimbing(maxVecZ)
     isClimbing = false 
-
+    -- tes3.messageBox(maxVecZ)
     -- local jumpXP = tes3.getSkill(tes3.skill.acrobatics).actions[1]
     
-    local climbDistance = tes3.player.position.z - initialZPos
+    local maxDrop = -maxVecZ
 
-    if climbDistance <= 0 then return end
+    if maxDrop <= 0 then return end
 
-    climbDistance = math.min(climbDistance, MAX_XP_CLIMB_DIST)
+    maxDrop = math.min(maxDrop, MAX_XP_CLIMB_DIST)
 
-    local xp = math.lerp(1, 5, climbDistance / MAX_XP_CLIMB_DIST)
+    local xp = math.lerp(1, 5, maxDrop / MAX_XP_CLIMB_DIST)
 
     if config.trainClimbing then
         climbSkill:exercise(xp)
@@ -241,7 +248,7 @@ local function doneClimbing(initialZPos)
 
 end
 
-local function startClimbing(deltaZ)
+local function startClimbing(deltaZ, maxVecZ)
     local mob = tes3.mobilePlayer
 
     -- disable the swimming physics systems
@@ -258,8 +265,8 @@ local function startClimbing(deltaZ)
     -- set climbing state until it finished
     isClimbing = true
     
-    local initialZPos = tes3.player.position.z
-    timer.start{duration = climbDuration, callback = function() doneClimbing(initialZPos) end}
+    
+    timer.start{duration = climbDuration, callback = function() doneClimbing(maxVecZ) end}
 
     -- trigger the actual climbing function
     local speed = (mob.moveSpeed < 100) and 1.5 or 2.0
@@ -279,14 +286,14 @@ local function startClimbing(deltaZ)
 end
 
 local function attemptClimbing()
-    local destination = getClimbingDestination()
-    if destination == nil then
+    local destination, maxVecZ = getClimbingDestination()
+    if destination == nil or maxVecZ == nil then
         return
     end
 
     -- how much to move upwards
     -- bias for player bounding box
-    startClimbing(64 + destination.z - tes3.player.position.z)
+    startClimbing(64 + destination.z - tes3.player.position.z, maxVecZ)
 
     
 
