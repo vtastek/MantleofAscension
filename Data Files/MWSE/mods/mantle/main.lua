@@ -201,10 +201,10 @@ local function getClimbingDestination(positionCache)
     local maxVecZ = -math.huge -- Initialize with negative infinity
 
     -- raycast down from increasing forward offsets(from farthest to nearest)
-    for i=1, 8, -1 do
+    for i=8, 1, -1 do
 
         local startPos = rayPosition + forward * (CLIMB_MIN_DISTANCE * i)
-        local newPosition = true -- checkNewPositions(positionCache, startPos) -- cache and check previous 8 positions
+        local newPosition = checkNewPositions(positionCache, startPos) -- cache and check previous 8 positions
         if newPosition then
             local rayhit = rayTest{
                 widgetId = "widget_" .. i,
