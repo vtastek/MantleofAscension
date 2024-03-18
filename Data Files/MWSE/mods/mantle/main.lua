@@ -38,6 +38,7 @@ skillsModule = nil
 
 -- state
 local isClimbing = false
+local rayTestCount = 0
 
 -- constants
 local CLIMB_TIMING_WINDOW = 0.15
@@ -162,10 +163,10 @@ end
 
 local function checkNewPositions(positionCache, newPosition)
     
-    -- Check if the new position is within 5 units of any cached position
+    -- Check if the new position is within 20 units of any cached position
     for _, cachedPos in ipairs(positionCache) do
         local distance = newPosition :distance(cachedPos)
-        if distance < 1 then
+        if distance < 20 then
             return false -- Position is too close to a cached position
         end
     end
@@ -206,6 +207,7 @@ local function getClimbingDestination(positionCache)
         local startPos = rayPosition + forward * (CLIMB_MIN_DISTANCE * i)
         local newPosition = checkNewPositions(positionCache, startPos) -- cache and check previous 8 positions
         if newPosition then
+            rayTestCount = rayTestCount + 1
             local rayhit = rayTest{
                 widgetId = "widget_" .. i,
                 position = startPos,
@@ -373,22 +375,17 @@ local function onKeyDownJump()
         callback = function()
             if attemptClimbing(positionCache) then
                 climbTimer:cancel()
+                -- tes3.messageBox(rayTestCount)
+                rayTestCount = 0
             end
         end
     }
     climbTimer.callback()
 end
 
-
-
-
-
 --
 -- Events
 --
-
-
-
 
 local function updateJumpKey()
 
