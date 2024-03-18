@@ -5,10 +5,24 @@ local template = mwse.mcm.createTemplate{name = "Mantle of Ascension"}
 template:saveOnClose("mantle", config)
 template:register()
 
-local generalPage = template:createSideBarPage{
-    label = "Mantle of Ascension Settings",
-    description = "General settings Mantle of Ascension, v0.0.1",
-}
+local sideBarDefault = (
+        "Mantle of Ascension\n\z" ..
+        "Adds Thief style climbing to Morrowind\n\z" ..
+        "by Vtastek, Greatness7, Herbert\n\z" ..
+        "v0.3\n\z\n\z" ..
+        "For climbing to also have its own skill, optionally get:"
+    )
+
+local function addSideBar(component)
+    component.sidebar:createInfo{ text = sideBarDefault}
+    component.sidebar:createHyperLink{
+        text = "Skills Module by Merlord",
+        exec = "start https://www.nexusmods.com/morrowind/mods/46034",
+    }
+end
+
+local generalPage = template:createSideBarPage()
+addSideBar(generalPage)
 
 generalPage:createYesNoButton{
     label = "Train Acrobatics",
