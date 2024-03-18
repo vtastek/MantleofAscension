@@ -2,11 +2,34 @@
 -- by vtastek
 -- Adds climbing to Morrowind
 
-mwse.log("[Mantle of Ascension] Version 0.0.1")
+
+local log = require("logging.logger").new{name="Mantle of Ascension"}
+
+local jumpKeyCode -- current jump key
+
+
+-- log:setLogLevel("DEBUG")
 
 -- modules
 local config = require("mantle.config")
-local skillModuleClimb = include("OtherSkills.skillModule")
+local skillsModule = include("SkillsModule") ---@type SkillsModule?
+
+local climbSkill ---@type SkillsModule.Skill
+if skillsModule then
+    climbSkill = skillsModule.registerSkill{
+        id = "climbing",
+        name = "Climbing",
+        description = "Climbing is a skill checked whenever one attempts to scale a wall or a steep incline. \z
+            Skilled individuals can climb longer by getting exhausted later.",
+        icon = "Icons/vt/climbing.dds",
+        specialization = tes3.specialization.stealth,
+        value = 10,
+    }
+end
+if not climbSkill then config.trainClimbing = false end
+skillsModule = nil
+
+
 
 -- state
 local isClimbing = false
@@ -19,31 +42,13 @@ local UP = tes3vector3.new(0, 0, 1)
 local DOWN = tes3vector3.new(0, 0, -1)
 local MIN_ANGLE = math.rad(45)
 
+local MAX_XP_CLIMB_DIST = 150
+
 --
 -- Skill Progress
 --
 
-local function getJumpExperienceValue()
-    return tes3.getSkill(tes3.skill.acrobatics).actions[1]
-end
 
-local function applyAcrobaticsProgress()
-    if config.trainAcrobatics then
-        tes3.mobilePlayer:exerciseSkill(tes3.skill.acrobatics, getJumpExperienceValue())
-    end
-end
-
-local function applyAthleticsProgress()
-    if config.trainAthletics then
-        tes3.mobilePlayer:exerciseSkill(tes3.skill.athletics, getJumpExperienceValue())
-    end
-end
-
-local function applyClimbingProgress(value)
-    if config.trainClimbing and skillModuleClimb then
-        skillModuleClimb.incrementSkill("climbing", {progress = value})
-    end
-end
 
 --
 -- Fatigue Cost
@@ -74,8 +79,8 @@ local function applyClimbingFatigueCost()
         skillCheckDivider = skillCheckDivider + 1
     end
 
-    if skillModuleClimb ~= nil and config.trainClimbing then
-        skillCheckAverage = skillCheckAverage + skillModuleClimb.getSkill("climbing").value
+    if config.trainClimbing then
+        skillCheckAverage = skillCheckAverage + climbSkill.current
         skillCheckDivider = skillCheckDivider + 1
     end
 
@@ -144,8 +149,9 @@ end
 -- Climbing
 --
 
-local function getCeilingDistance(t)
-    local rayhit = tes3.rayTest{position = t.position, direction = UP, ignore = {tes3.player}, maxDist=t.maxDist}
+local function getCeilingDistance(pos)
+    pos = pos or tes3.getPlayerEyePosition()
+    local rayhit = tes3.rayTest{position = pos, direction = UP, ignore = {tes3.player}}
     return rayhit and rayhit.distance or math.huge
 end
 
@@ -174,7 +180,6 @@ local function getClimbingDestination()
             position = rayPosition + forward * (CLIMB_MIN_DISTANCE * i),
             direction = DOWN,
             ignore = {tes3.player},
-            maxDist = 200,
         }
         if rayhit then
             local vec = rayhit.intersection - position
@@ -188,22 +193,20 @@ local function getClimbingDestination()
         end
     end
 
-    if destination and getCeilingDistance{position=destination, maxDist=64} >= 64 then
+    if destination and getCeilingDistance(destination) >= 64 then
         return destination
     end
 end
 
-local function climbPlayer(destinationZ, speed)
+local function climbPlayer(deltaZ, speed)
     -- avoid sending us through the ceiling
-    if getCeilingDistance{position=tes3.getPlayerEyePosition(), maxDist=20} <= 20 then
-        return
-    end
+    if getCeilingDistance() < 20 then return end
 
     local mob = tes3.mobilePlayer
     local pos = mob.reference.position
 
     -- equalizing instead gets consistent results
-    local verticalClimb = destinationZ / 600 * speed
+    local verticalClimb = deltaZ / 600 * speed
     if verticalClimb > 0 then
         local previous = pos:copy()
         pos.z = pos.z + verticalClimb
@@ -211,7 +214,34 @@ local function climbPlayer(destinationZ, speed)
     end
 end
 
-local function startClimbing(destinationZ)
+
+local function doneClimbing(initialZPos)
+    isClimbing = false 
+
+    -- local jumpXP = tes3.getSkill(tes3.skill.acrobatics).actions[1]
+    
+    local climbDistance = tes3.player.position.z - initialZPos
+
+    if climbDistance <= 0 then return end
+
+    climbDistance = math.min(climbDistance, MAX_XP_CLIMB_DIST)
+
+    local xp = math.lerp(1, 5, climbDistance / MAX_XP_CLIMB_DIST)
+
+    if config.trainClimbing then
+        climbSkill:exercise(xp)
+    end
+
+    if config.trainAthletics then
+        tes3.mobilePlayer:exerciseSkill(tes3.skill.athletics, xp/3)
+    end
+    if config.trainAcrobatics then
+        tes3.mobilePlayer:exerciseSkill(tes3.skill.acrobatics, xp/2)
+    end
+
+end
+
+local function startClimbing(deltaZ)
     local mob = tes3.mobilePlayer
 
     -- disable the swimming physics systems
@@ -221,13 +251,15 @@ local function startClimbing(destinationZ)
     local climbDuration = 0.4
     if (mob.fatigue.current <= 0) or getEncumbRatio(mob) >= 0.85 then
         climbDuration = 2.0
-        destinationZ = destinationZ - mob.height * 0.8
+        deltaZ = deltaZ - mob.height * 0.8
         playSound{sound = 'Item Armor Light Down', volume = 1.0, pitch = 1.3, delay = 0.2}
     end
 
     -- set climbing state until it finished
     isClimbing = true
-    timer.start{duration = climbDuration, callback = function() isClimbing = false end}
+    
+    local initialZPos = tes3.player.position.z
+    timer.start{duration = climbDuration, callback = function() doneClimbing(initialZPos) end}
 
     -- trigger the actual climbing function
     local speed = (mob.moveSpeed < 100) and 1.5 or 2.0
@@ -235,7 +267,7 @@ local function startClimbing(destinationZ)
         duration = 1/600,
         iterations = 600/speed,
         callback = function()
-            climbPlayer(destinationZ, speed)
+            climbPlayer(deltaZ, speed)
         end,
     }
 
@@ -254,19 +286,12 @@ local function attemptClimbing()
 
     -- how much to move upwards
     -- bias for player bounding box
-    destination = (destination.z - tes3.player.position.z) + 64
-    startClimbing(destination)
+    startClimbing(64 + destination.z - tes3.player.position.z)
 
-    if skillModuleClimb ~= nil and config.trainClimbing then
-        local climbProgressHeight = math.max(0, tes3.player.position.z)
-        climbProgressHeight = math.min(climbProgressHeight, 10000)
-        climbProgressHeight = math.remap(climbProgressHeight, 0, 10000, 1, 5)
-        applyClimbingProgress(climbProgressHeight)
-    end
+    
 
-    --
-    applyAcrobaticsProgress()
-    applyAthleticsProgress()
+    
+
     applyClimbingFatigueCost()
 
     return true
@@ -301,7 +326,7 @@ local function onKeyDownJump()
     local fastfall = 125 - mob.acrobatics.current
     if fastfall > 0 then
         if velocity.z < -10 * (-1.5 * fastfall + 250) then
-            applyClimbingProgress(5)
+            if config.trainClimbing then climbSkill:exercise(5) end
             return
         end
     end
@@ -319,44 +344,46 @@ local function onKeyDownJump()
     climbTimer.callback()
 end
 
+
+
+
+
 --
 -- Events
 --
 
-local inputMaps
-local function onKeyDown(e)
-    if inputMaps == nil then
-        inputMaps = tes3.worldController.inputController.inputMaps
-    end
-    if e.keyCode == inputMaps[tes3.keybind.jump + 1].code then
-        onKeyDownJump()
-    end
-end
-event.register("keyDown", onKeyDown)
 
-local function onSkillsReady()
-    local charGen = tes3.findGlobal("CharGenState")
-    local function checkCharGen()
-        if charGen.value ~= -1 then return end
-        skillModuleClimb.registerSkill("climbing", {
-            name = "Climbing",
-            icon = "Icons/vt/climbing.dds",
-            description = (
-                "Climbing is a skill checked whenever one attempts to scale a wall or a steep incline." ..
-                " Skilled individuals can climb longer by getting exhausted later."
-            ),
-            value = 10,
-            attribute =  tes3.attribute.strength,
-            specialization = tes3.specialization.stealth,
-            active = config.trainClimbing and "active" or "inactive"
-        })
-        event.unregister("simulate", checkCharGen)
-    end
-    event.register("simulate", checkCharGen)
-end
-event.register("OtherSkills:Ready", onSkillsReady)
 
-local function onModConfigReady()
-    require("mantle.mcm")
+
+local function updateJumpKey()
+
+    local oldJumpKeyCode = jumpKeyCode
+
+    jumpKeyCode = tes3.getInputBinding(tes3.keybind.jump).code ---@type tes3.scanCode
+
+    if event.isRegistered(tes3.event.menuExit, updateJumpKey) then
+        -- log:debug("updateJumpKey was registered to menuExit, unregistering...")
+        event.unregister(tes3.event.menuExit, updateJumpKey) 
+    end
+
+    if event.isRegistered(tes3.event.keyDown, onKeyDownJump, {filter = oldJumpKeyCode}) then
+        event.unregister(tes3.event.keyDown, onKeyDownJump, {filter = oldJumpKeyCode})
+    end
+
+    -- log:debug("jump key updated to %s", table.find(tes3.scanCode, jumpKeyCode))
+
+    event.register(tes3.event.keyDown, onKeyDownJump, {filter = jumpKeyCode})
 end
-event.register("modConfigReady", onModConfigReady)
+
+local function MenuCtrlsActivated()
+    -- log:debug("menu ctrls activated! registering update jump key event")
+    event.register(tes3.event.menuExit, updateJumpKey)
+end
+
+
+event.register("initialized",function()
+    log:info("Initialized.")
+    updateJumpKey()
+    event.register("uiActivated", MenuCtrlsActivated, {filter="MenuCtrls"})
+    require "mantle.mcm"
+end)

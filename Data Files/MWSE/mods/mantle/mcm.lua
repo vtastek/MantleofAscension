@@ -1,5 +1,6 @@
 local config = require("mantle.config")
 
+
 local template = mwse.mcm.createTemplate{name = "Mantle of Ascension"}
 template:saveOnClose("mantle", config)
 template:register()
@@ -20,43 +21,23 @@ generalPage:createYesNoButton{
     variable = mwse.mcm.createTableVariable({id = "trainAthletics", table = config})
 }
 
-local skillModule = include("OtherSkills.skillModule")
+generalPage:createYesNoButton{
+    label = "Train Climbing",
+    description = "Climbing will increase its own Climbing skill...\n\z
+        This setting requires the Skills Module to be installed.",
+    variable = mwse.mcm.createTableVariable{ id = "trainClimbing", table = config, },
+    -- make sure setting can only be enabled if skills module is installed
+    callback = function (self)
+        
+        local value = self.variable.value
 
-local function checkClimbingSkillActive()
-    local isActive = config.trainClimbing and "active" or "inactive"
-    if skillModule ~= nil then
-        skillModule.updateSkill( "climbing", {active = isActive} )
+        if value and not include("SkillsModule") then
+            tes3.messageBox("Error: The Skills Module is not installed!")
+            self.variable.value = false
+            self:update()
+        end
     end
-end
-
--- luacheck: ignore 212/self
--- luacheck: ignore 212/value
-local function getClimbSkillBool(self, value)
-   return config.trainClimbing
-end
-
-local function setClimbSkillBool(self, value)
-    config.trainClimbing = value
-    checkClimbingSkillActive()
-end
-
-if skillModule ~= nil then
-    generalPage:createYesNoButton{
-        label = "Train Climbing",
-        description = "Climbing will increase its own Climbing skill...",
-        variable = mwse.mcm:createVariable{
-            get = getClimbSkillBool,
-            set = setClimbSkillBool
-        }
-    }
-else
-    generalPage:createHyperlink{
-        label = "You can get Skills Module to add Climbing Skill too!",
-        description = "Installing Skills Module will add Climbing skill as default.",
-        text = "https://www.nexusmods.com/morrowind/mods/46034",
-        exec = 'start https://www.nexusmods.com/morrowind/mods/46034'
-    }
-end
+}
 
 generalPage:createYesNoButton{
     label = "Disable Third Person",
