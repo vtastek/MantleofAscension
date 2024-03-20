@@ -1,4 +1,4 @@
--- mantle v0.2
+-- mantle v0.3
 -- by vtastek
 -- Adds climbing to Morrowind
 
