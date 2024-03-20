@@ -163,10 +163,10 @@ end
 
 local function checkNewPositions(positionCache, newPosition)
     
-    -- Check if the new position is within 20 units of any cached position
-    for _, cachedPos in ipairs(positionCache) do
-        local distance = newPosition :distance(cachedPos)
-        if distance < 20 then
+    -- Check if the new position is within 15 units of any cached position
+    for i = #positionCache, math.max(#positionCache - 7, 1), -1 do
+        local distance = newPosition :distance(positionCache[i])
+        if distance < 15 then
             return false -- Position is too close to a cached position
         end
     end
@@ -175,9 +175,9 @@ local function checkNewPositions(positionCache, newPosition)
     table.insert(positionCache, newPosition)
 
     -- Remove the oldest position if the cache exceeds 8 entries
-    if #positionCache > 8 then
-        table.remove(positionCache, 1)
-    end
+    --if #positionCache > 8 then
+        --table.remove(positionCache, 1)
+    --end
 
     return true -- New position is valid
 end
@@ -209,7 +209,7 @@ local function getClimbingDestination(positionCache)
         if newPosition then
             rayTestCount = rayTestCount + 1
             local rayhit = rayTest{
-                widgetId = "widget_" .. i,
+                widgetId = "widget_" .. math.random(100),
                 position = startPos,
                 direction = DOWN,
                 ignore = {tes3.player},
@@ -375,8 +375,9 @@ local function onKeyDownJump()
         callback = function()
             if attemptClimbing(positionCache) then
                 climbTimer:cancel()
-                -- tes3.messageBox(rayTestCount)
+                tes3.messageBox(rayTestCount)
                 rayTestCount = 0
+                positionCache = {} -- Clear the position cache
             end
         end
     }
