@@ -287,7 +287,7 @@ local function startClimbing(deltaZ, maxVecZ)
     if (mob.fatigue.current <= 0) or getEncumbRatio(mob) >= 0.85 then
         climbDuration = 2.0
         deltaZ = deltaZ - mob.height * 0.8
-        playSound{sound = 'Item Armor Light Down', volume = 1.0, pitch = 1.3, delay = 0.2}
+        playSound{sound = 'Item Armor Light Down', volume = 0.8, pitch = 1.3, delay = 0.2}
     end
 
     -- set climbing state until it finished
